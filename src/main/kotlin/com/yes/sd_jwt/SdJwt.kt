@@ -3,10 +3,12 @@ package com.yes.sd_jwt
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSObject
+import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.Payload
 import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.Ed25519Verifier
 import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyType
 import com.nimbusds.jose.jwk.OctetKeyPair
@@ -29,18 +31,18 @@ fun createHash(value: String): String {
     return b64Encoder(messageDigest)
 }
 
-fun buildSvcAndSdClaims(claims: Map<String, Any>, depth: Int): Pair<JSONObject, JSONObject> {
+fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONObject> {
     val svcClaims = JSONObject()
     val sdClaims = JSONObject()
 
     val secureRandom = SecureRandom()
 
-    for ((key, value) in claims) {
-        if (value is String || depth == 0) {
-            val preproValue = if (value is String) {
-                value
-            } else if (value is Map<*, *>) {
-                JSONObject(value)
+    for (key in claims.keys()) {
+        if (claims[key] is String || depth == 0) {
+            val preproValue = if (claims[key] is String) {
+                claims.getString(key)
+            } else if (claims[key] is JSONObject) {
+               claims[key]
             } else {
                 throw Exception("Cannot encode class")
             }
@@ -53,8 +55,8 @@ fun buildSvcAndSdClaims(claims: Map<String, Any>, depth: Int): Pair<JSONObject, 
             svcClaims.put(key, hashInput)
 
             sdClaims.put(key, createHash(hashInput))
-        } else if (value is Map<*, *> && depth > 0) {
-            val (svcClaimsChild, sdClaimsChild) = buildSvcAndSdClaims(value as Map<String, Any>, depth - 1)
+        } else if (claims[key] is JSONObject && depth > 0) {
+            val (svcClaimsChild, sdClaimsChild) = buildSvcAndSdClaims(claims.getJSONObject(key), depth - 1)
             svcClaims.put(key, svcClaimsChild)
             sdClaims.put(key, sdClaimsChild)
         } else {
@@ -67,7 +69,7 @@ fun buildSvcAndSdClaims(claims: Map<String, Any>, depth: Int): Pair<JSONObject, 
 
 inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: String, issuerKey: JWK, depth: Int = 0): String {
     val jsonClaims = JSONObject(Json.encodeToString(claims))
-    val (svcClaims, sdClaims) = buildSvcAndSdClaims(jsonClaims.toMap(), depth)
+    val (svcClaims, sdClaims) = buildSvcAndSdClaims(jsonClaims, depth)
 
     val svc = JSONObject().put("sd_claims", svcClaims)
     val svcEncoded = b64Encoder(svc.toString())
@@ -79,8 +81,11 @@ inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: S
         .put("exp", date + 3600 * 24)
         .put("sub_jwk", issuerKey.toPublicJWK().toJSONObject())
         .put("sd_claims", sdClaims)
-        .toString()
-    val sdJwtEncoded = buildJWT(claimsSet, issuerKey)
+    if (holderPubKey != null) {
+        claimsSet.put("holder", jwkThumbprint(holderPubKey))
+    }
+
+    val sdJwtEncoded = buildJWT(claimsSet.toString(), issuerKey)
 
     return "$sdJwtEncoded.$svcEncoded"
 }
@@ -114,6 +119,7 @@ inline fun <reified T> createPresentation(credential: String, releaseClaims: T, 
     if (holderKey != null) {
         releaseDocument.put("sub_jwk", holderKey.toPublicJWK().toJSONObject())
     }
+    // TODO Check if credential has holder binding. If so force signing of the SD-JWT Release.
     val releaseDocumentEncoded = buildJWT(releaseDocument.toString(), holderKey)
 
     return "${credentialParts[0]}.${credentialParts[1]}.${credentialParts[2]}.$releaseDocumentEncoded"
@@ -165,58 +171,95 @@ fun parseAndVerifySdClaims(sdClaims: JSONObject, svc: JSONObject): JSONObject {
     return sdClaimsParsed
 }
 
-inline fun <reified T> verifyPresentation(presentation: String, nonce: String): T {
+inline fun <reified T> verifyPresentation(presentation: String, trustedIssuer: Map<String, String>, expectedNonce: String, expectedAud: String): T {
     val pS = presentation.split(".")
     if (pS.size != 6) {
         throw Exception("Presentation has wrong format (Needed 6 parts separated by '.')")
     }
 
+    // Verify SD-JWT
     val sdJwt = "${pS[0]}.${pS[1]}.${pS[2]}"
-    val sdJwtParsed = parseAndVerifyJWT(sdJwt)
-    val sdJwtRelease = "${pS[3]}.${pS[4]}.${pS[5]}"
-    val sdJwtReleaseParsed = parseAndVerifyJWT(sdJwtRelease)
+    val sdJwtParsed = verifyJWTSignature(sdJwt, trustedIssuer, true)
+    verifyJwtClaims(sdJwtParsed)
 
-    // Todo verify nonce and audience
+    // Verify SD-JWT Release
+    val sdJwtRelease = "${pS[3]}.${pS[4]}.${pS[5]}"
+    val holderBinding = getHolderBinding(sdJwtParsed)
+    val sdJwtReleaseParsed = verifyJWTSignature(sdJwtRelease, holderBinding, false)
+    verifyJwtClaims(sdJwtReleaseParsed, expectedNonce, expectedAud)
 
     val sdClaimsParsed = parseAndVerifySdClaims(sdJwtParsed.getJSONObject("sd_claims"), sdJwtReleaseParsed.getJSONObject("sd_claims"))
-    println(sdClaimsParsed.toString(4))
 
     return Json.decodeFromString(sdClaimsParsed.toString())
 }
 
-fun parseAndVerifyJWT(jwt: String): JSONObject {
+fun verifyJWTSignature(jwt: String, trustedIssuer: Map<String, String>, verifyIss: Boolean): JSONObject {
     val splits = jwt.split(".")
     val header = JSONObject(b64Decode(splits[0]))
     val body = JSONObject(b64Decode(splits[1]))
-    // Todo add RSA as signing algorithm
-    return when (header.getString("alg")) {
-        "none" -> body
-        "EdDSA" -> {
-            val key = OctetKeyPair.parse(body.getJSONObject("sub_jwk").toString())
-            val verifier = Ed25519Verifier(key)
-            val jwtParsed = SignedJWT.parse(jwt)
 
-            // Verify JWT
-            if(!jwtParsed.verify(verifier)) {
-                throw Exception("JWT signature not valid")
-            }
-            val date = Date(LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) * 1000)
-            // Check that the JWT is already valid with an offset of 30 seconds
-            if (jwtParsed.jwtClaimsSet.issueTime != null && !date.after(Date(jwtParsed.jwtClaimsSet.issueTime.time - 30000))) {
-                throw Exception("JWT not yet valid")
-            }
-            if (jwtParsed.jwtClaimsSet.expirationTime != null && !date.before(jwtParsed.jwtClaimsSet.expirationTime)) {
-                throw Exception("JWT is expired")
-            }
-            // TODO verify issuer and signing key
-
-            return body
-        }
-        else -> {
-            throw Exception("JWT algorithm not supported")
-        }
+    val jwk: JWK
+    val verifier: JWSVerifier
+    if (header.getString("alg") == JWSAlgorithm.EdDSA.name) {
+        jwk = OctetKeyPair.parse(body.getJSONObject("sub_jwk").toString())
+        verifier = Ed25519Verifier(jwk)
+    } else if (header.getString("alg") == JWSAlgorithm.RS256.name) {
+        jwk = RSAKey.parse(body.getJSONObject("sub_jwk").toString())
+        verifier = RSASSAVerifier(jwk)
+    } else if (header.getString("alg") == "none") {
+        return body
+    } else {
+        throw Exception("JWT signing algorithm not implemented")
     }
 
+    // Verify issuer key
+    val jwkThumbprint = jwkThumbprint(jwk)
+    if (
+        (verifyIss
+                && (body.isNull("iss") || !trustedIssuer.containsKey(body.getString("iss"))
+                || trustedIssuer[body.getString("iss")] != jwkThumbprint)
+            )
+        || (!verifyIss
+                && (!body.isNull("iss") || !trustedIssuer.containsKey(jwkThumbprint)
+                || trustedIssuer[jwkThumbprint] != jwkThumbprint)
+            )
+    ) {
+        throw Exception("Could not verify JWK key (Thumbprint: $jwkThumbprint)")
+    }
+
+    val jwtParsed = SignedJWT.parse(jwt)
+    // Verify JWT
+    if(!jwtParsed.verify(verifier)) {
+        throw Exception("Invalid JWT signature")
+    }
+
+    return body
+}
+
+fun getHolderBinding(sdJwt: JSONObject): Map<String, String>  {
+    return if (sdJwt.isNull("holder")) {
+        mapOf()
+    } else {
+        mapOf(sdJwt.getString("holder") to sdJwt.getString("holder"))
+    }
+}
+
+fun verifyJwtClaims(claims: JSONObject, expectedNonce: String? = null, expectedAud: String? = null) {
+    if (expectedNonce != null && claims.getString("nonce") != expectedNonce) {
+        throw Exception("JWT claims verification failed (invalid nonce)")
+    }
+    if (expectedAud != null && claims.getString("aud") != expectedAud) {
+        throw Exception("JWT claims verification failed (invalid audience)")
+    }
+
+    val date = Date(LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) * 1000)
+    // Check that the JWT is already valid with an offset of 30 seconds
+    if (!claims.isNull("iat") && !date.after(Date((claims.getLong("iat") - 30) * 1000))) {
+        throw Exception("JWT not yet valid")
+    }
+    if (!claims.isNull("exp") && !date.before(Date(claims.getLong("exp") * 1000))) {
+        throw Exception("JWT is expired")
+    }
 }
 
 fun b64Encoder(str: String): String {
@@ -229,4 +272,8 @@ fun b64Encoder(b: ByteArray): String {
 
 fun b64Decode(str: String): String {
     return String(Base64.getUrlDecoder().decode(str))
+}
+
+fun jwkThumbprint(jwk: JWK): String {
+    return b64Encoder(jwk.computeThumbprint().decode())
 }

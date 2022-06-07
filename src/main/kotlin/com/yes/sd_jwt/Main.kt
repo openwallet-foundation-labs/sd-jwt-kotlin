@@ -13,6 +13,9 @@ data class IdCredential(val given_name: String = "", val family_name: String = "
 
 
 fun main(args: Array<String>) {
+    val verifier = "http://verifier.example.com"
+    val issuer = "http://issuer.example.com"
+
     val issuerKey = OctetKeyPairGenerator(Curve.Ed25519)
         .keyID("IssuerKey")
         .generate()
@@ -21,23 +24,29 @@ fun main(args: Array<String>) {
         .generate()
     val holderPublicKey = holderKey.toPublicJWK()
 
+    val trustedIssuers = mutableMapOf<String, String>()
+    trustedIssuers[issuer] = jwkThumbprint(issuerKey)
+    println("Trusted Issuers: $trustedIssuers\n")
+
     val claims0 = LoginCredential("Alice", "Wonderland", "alice@example.com")
-    val credential0 = createCredential(claims0, holderPublicKey, "http://issuer.example.com", issuerKey)
+    val credential0 = createCredential(claims0, null, issuer, issuerKey)
+    println("Credential0: $credential0\n")
 
     val releaseClaims0 = LoginCredential("disclose", "", "disclose")
-    val presentation0 = createPresentation(credential0, releaseClaims0, "http://verifier.example.com", "12345", holderKey)
-    println("Presentation0: $presentation0")
+    val presentation0 = createPresentation(credential0, releaseClaims0, verifier, "12345", null)
+    println("Presentation0: $presentation0\n")
 
-    val verifiedLoginCredential = verifyPresentation<LoginCredential>(presentation0, "12345")
-    println("Verified Login Credential: $verifiedLoginCredential")
+    val verifiedLoginCredential = verifyPresentation<LoginCredential>(presentation0, trustedIssuers,"12345", verifier)
+    println("Verified Login Credential: $verifiedLoginCredential\n")
 
     val claims1 = IdCredential("Alice", "Wonderland", "alice@example.com", "1940-01-01", Address("123 Main St", "Anytown", "Anystate", "US"))
-    val credential1 = createCredential(claims1, holderPublicKey, "http://issuer.example.com", issuerKey, 1)
+    val credential1 = createCredential(claims1, holderPublicKey, issuer, issuerKey, 1)
+    println("Credential1: $credential1\n")
 
     val releaseClaims1 = IdCredential("disclose", "disclose", "", "", Address("disclose", "disclose", "", ""))
-    val presentation1 = createPresentation(credential1, releaseClaims1, "http://verifier.example.com", "12345", holderKey)
-    println("Presentation1: $presentation1")
+    val presentation1 = createPresentation(credential1, releaseClaims1, verifier, "12345", holderKey)
+    println("Presentation1: $presentation1\n")
 
-    val verifiedIdCredential = verifyPresentation<IdCredential>(presentation1, "12345")
-    println("Verified Id Credential: $verifiedIdCredential")
+    val verifiedIdCredential = verifyPresentation<IdCredential>(presentation1, trustedIssuers,"12345", verifier)
+    println("Verified Id Credential: $verifiedIdCredential\n")
 }
