@@ -1,0 +1,5 @@
+.gradle/
+.idea/
+.git/
+build/
+README.md

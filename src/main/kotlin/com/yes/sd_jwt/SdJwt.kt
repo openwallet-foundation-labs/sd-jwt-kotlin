@@ -39,22 +39,16 @@ fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONOb
 
     for (key in claims.keys()) {
         if (claims[key] is String || depth == 0) {
-            val preproValue = if (claims[key] is String) {
-                claims.getString(key)
-            } else if (claims[key] is JSONObject) {
-               claims[key]
-            } else {
-                throw Exception("Cannot encode class")
-            }
-
+            // Generate salt
             val randomness = ByteArray(16)
             secureRandom.nextBytes(randomness)
             val salt = b64Encoder(randomness)
 
-            val hashInput = JSONArray().put(salt).put(preproValue).toString()
-            svcClaims.put(key, hashInput)
+            // Encode salt and value together
+            val saltValueEncoded = JSONArray().put(salt).put(claims[key]).toString()
+            svcClaims.put(key, saltValueEncoded)
 
-            sdClaims.put(key, createHash(hashInput))
+            sdClaims.put(key, createHash(saltValueEncoded))
         } else if (claims[key] is JSONObject && depth > 0) {
             val (svcClaimsChild, sdClaimsChild) = buildSvcAndSdClaims(claims.getJSONObject(key), depth - 1)
             svcClaims.put(key, svcClaimsChild)
@@ -71,7 +65,7 @@ inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: S
     val jsonClaims = JSONObject(Json.encodeToString(claims))
     val (svcClaims, sdClaims) = buildSvcAndSdClaims(jsonClaims, depth)
 
-    val svc = JSONObject().put("sd_claims", svcClaims)
+    val svc = JSONObject().put("_sd", svcClaims)
     val svcEncoded = b64Encoder(svc.toString())
 
     val date = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
@@ -80,8 +74,9 @@ inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: S
         .put("iat", date)
         .put("exp", date + 3600 * 24)
         .put("sub_jwk", issuerKey.toPublicJWK().toJSONObject())
-        .put("sd_claims", sdClaims)
+        .put("_sd", sdClaims)
     if (holderPubKey != null) {
+        // Note that holder binding is not yet defined in the spec
         claimsSet.put("holder", jwkThumbprint(holderPubKey))
     }
 
@@ -115,7 +110,7 @@ inline fun <reified T> createPresentation(credential: String, releaseClaims: T, 
     val releaseDocument = JSONObject()
     releaseDocument.put("nonce", nonce)
     releaseDocument.put("aud", audience)
-    releaseDocument.put("sd_claims", buildReleaseSdClaims(rC, svc.getJSONObject("sd_claims")))
+    releaseDocument.put("_sd", buildReleaseSdClaims(rC, svc.getJSONObject("_sd")))
     if (holderKey != null) {
         releaseDocument.put("sub_jwk", holderKey.toPublicJWK().toJSONObject())
     }
@@ -188,7 +183,7 @@ inline fun <reified T> verifyPresentation(presentation: String, trustedIssuer: M
     val sdJwtReleaseParsed = verifyJWTSignature(sdJwtRelease, holderBinding, false)
     verifyJwtClaims(sdJwtReleaseParsed, expectedNonce, expectedAud)
 
-    val sdClaimsParsed = parseAndVerifySdClaims(sdJwtParsed.getJSONObject("sd_claims"), sdJwtReleaseParsed.getJSONObject("sd_claims"))
+    val sdClaimsParsed = parseAndVerifySdClaims(sdJwtParsed.getJSONObject("_sd"), sdJwtReleaseParsed.getJSONObject("_sd"))
 
     return Json.decodeFromString(sdClaimsParsed.toString())
 }

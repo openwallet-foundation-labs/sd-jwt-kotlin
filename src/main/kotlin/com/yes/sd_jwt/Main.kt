@@ -28,25 +28,49 @@ fun main(args: Array<String>) {
     trustedIssuers[issuer] = jwkThumbprint(issuerKey)
     println("Trusted Issuers: $trustedIssuers\n")
 
+    // First example
+    println("====================================================")
+    println("                     Issuer")
+    println("====================================================")
     val claims0 = LoginCredential("Alice", "Wonderland", "alice@example.com")
+    println("Claims for credential0: $claims0\n")
+
     val credential0 = createCredential(claims0, null, issuer, issuerKey)
     println("Credential0: $credential0\n")
 
+    println("====================================================")
+    println("                     Wallet")
+    println("====================================================")
     val releaseClaims0 = LoginCredential("disclose", "", "disclose")
     val presentation0 = createPresentation(credential0, releaseClaims0, verifier, "12345", null)
     println("Presentation0: $presentation0\n")
 
+    println("====================================================")
+    println("                     Verifier")
+    println("====================================================")
     val verifiedLoginCredential = verifyPresentation<LoginCredential>(presentation0, trustedIssuers,"12345", verifier)
     println("Verified Login Credential: $verifiedLoginCredential\n")
 
+    // Second example
+    println("====================================================")
+    println("                     Issuer")
+    println("====================================================")
     val claims1 = IdCredential("Alice", "Wonderland", "alice@example.com", "1940-01-01", Address("123 Main St", "Anytown", "Anystate", "US"))
+    println("Claims for credential1: $claims1\n")
+
     val credential1 = createCredential(claims1, holderPublicKey, issuer, issuerKey, 1)
     println("Credential1: $credential1\n")
 
+    println("====================================================")
+    println("                     Wallet")
+    println("====================================================")
     val releaseClaims1 = IdCredential("disclose", "disclose", "", "", Address("disclose", "disclose", "", ""))
     val presentation1 = createPresentation(credential1, releaseClaims1, verifier, "12345", holderKey)
     println("Presentation1: $presentation1\n")
 
+    println("====================================================")
+    println("                     Verifier")
+    println("====================================================")
     val verifiedIdCredential = verifyPresentation<IdCredential>(presentation1, trustedIssuers,"12345", verifier)
-    println("Verified Id Credential: $verifiedIdCredential\n")
+    println("Verified Id Credential: $verifiedIdCredential")
 }
