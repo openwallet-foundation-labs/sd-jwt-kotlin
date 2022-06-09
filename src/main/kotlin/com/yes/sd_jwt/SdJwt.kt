@@ -3,7 +3,6 @@ package com.yes.sd_jwt
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSObject
-import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.Payload
 import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.Ed25519Verifier
@@ -73,11 +72,10 @@ inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: S
         .put("iss", issuer)
         .put("iat", date)
         .put("exp", date + 3600 * 24)
-        .put("sub_jwk", issuerKey.toPublicJWK().toJSONObject())
         .put("_sd", sdClaims)
     if (holderPubKey != null) {
         // Note that holder binding is not yet defined in the spec
-        claimsSet.put("holder", jwkThumbprint(holderPubKey))
+        claimsSet.put("sub_jwk", holderPubKey.toJSONObject())
     }
 
     val sdJwtEncoded = buildJWT(claimsSet.toString(), issuerKey)
@@ -111,9 +109,7 @@ inline fun <reified T> createPresentation(credential: String, releaseClaims: T, 
     releaseDocument.put("nonce", nonce)
     releaseDocument.put("aud", audience)
     releaseDocument.put("_sd", buildReleaseSdClaims(rC, svc.getJSONObject("_sd")))
-    if (holderKey != null) {
-        releaseDocument.put("sub_jwk", holderKey.toPublicJWK().toJSONObject())
-    }
+
     // TODO Check if credential has holder binding. If so force signing of the SD-JWT Release.
     val releaseDocumentEncoded = buildJWT(releaseDocument.toString(), holderKey)
 
@@ -188,38 +184,38 @@ inline fun <reified T> verifyPresentation(presentation: String, trustedIssuer: M
     return Json.decodeFromString(sdClaimsParsed.toString())
 }
 
-fun verifyJWTSignature(jwt: String, trustedIssuer: Map<String, String>, verifyIss: Boolean): JSONObject {
+fun verifyJWTSignature(jwt: String, trustedIssuer: Map<String, String>, sdJwt: Boolean): JSONObject {
     val splits = jwt.split(".")
     val header = JSONObject(b64Decode(splits[0]))
     val body = JSONObject(b64Decode(splits[1]))
 
-    val jwk: JWK
-    val verifier: JWSVerifier
-    if (header.getString("alg") == JWSAlgorithm.EdDSA.name) {
-        jwk = OctetKeyPair.parse(body.getJSONObject("sub_jwk").toString())
-        verifier = Ed25519Verifier(jwk)
-    } else if (header.getString("alg") == JWSAlgorithm.RS256.name) {
-        jwk = RSAKey.parse(body.getJSONObject("sub_jwk").toString())
-        verifier = RSASSAVerifier(jwk)
-    } else if (header.getString("alg") == "none") {
+    if (header.getString("alg") == "none") {
         return body
-    } else {
-        throw Exception("JWT signing algorithm not implemented")
     }
 
-    // Verify issuer key
-    val jwkThumbprint = jwkThumbprint(jwk)
-    if (
-        (verifyIss
-                && (body.isNull("iss") || !trustedIssuer.containsKey(body.getString("iss"))
-                || trustedIssuer[body.getString("iss")] != jwkThumbprint)
-            )
-        || (!verifyIss
-                && (!body.isNull("iss") || !trustedIssuer.containsKey(jwkThumbprint)
-                || trustedIssuer[jwkThumbprint] != jwkThumbprint)
-            )
-    ) {
-        throw Exception("Could not verify JWK key (Thumbprint: $jwkThumbprint)")
+    // Get JWK to verify the signature
+    val issuer = if (sdJwt && !body.isNull("iss")) {
+        body.getString("iss")
+    } else if (!sdJwt) {
+        "holderKey"
+    } else {
+        throw Exception("Could not find issuer in JWT")
+    }
+    if (!trustedIssuer.containsKey(issuer)) {
+        throw Exception("Could not find signing key to verify JWT")
+    }
+
+    val jwk = JWK.parse(trustedIssuer[issuer])
+    val verifier = when (jwk.keyType) {
+        KeyType.OKP -> {
+            Ed25519Verifier(jwk.toOctetKeyPair())
+        }
+        KeyType.RSA -> {
+            RSASSAVerifier(jwk.toRSAKey())
+        }
+        else -> {
+            throw NotImplementedError("JWT signing algorithm not implemented")
+        }
     }
 
     val jwtParsed = SignedJWT.parse(jwt)
@@ -232,10 +228,10 @@ fun verifyJWTSignature(jwt: String, trustedIssuer: Map<String, String>, verifyIs
 }
 
 fun getHolderBinding(sdJwt: JSONObject): Map<String, String>  {
-    return if (sdJwt.isNull("holder")) {
+    return if (sdJwt.isNull("sub_jwk")) {
         mapOf()
     } else {
-        mapOf(sdJwt.getString("holder") to sdJwt.getString("holder"))
+        mapOf("holderKey" to sdJwt.getJSONObject("sub_jwk").toString())
     }
 }
 
