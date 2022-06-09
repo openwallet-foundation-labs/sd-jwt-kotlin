@@ -2,6 +2,7 @@ package com.yes.sd_jwt
 
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -25,12 +26,12 @@ fun main(args: Array<String>) {
     val holderPublicKey = holderKey.toPublicJWK()
 
     val trustedIssuers = mutableMapOf<String, String>()
-    trustedIssuers[issuer] = jwkThumbprint(issuerKey)
+    trustedIssuers[issuer] = issuerKey.toPublicJWK().toJSONString()
     println("Trusted Issuers: $trustedIssuers\n")
 
     // First example
     println("====================================================")
-    println("                     Issuer")
+    println("                     Issuer                         ")
     println("====================================================")
     val claims0 = LoginCredential("Alice", "Wonderland", "alice@example.com")
     println("Claims for credential0: $claims0\n")
@@ -39,21 +40,21 @@ fun main(args: Array<String>) {
     println("Credential0: $credential0\n")
 
     println("====================================================")
-    println("                     Wallet")
+    println("                     Wallet                         ")
     println("====================================================")
     val releaseClaims0 = LoginCredential("disclose", "", "disclose")
     val presentation0 = createPresentation(credential0, releaseClaims0, verifier, "12345", null)
     println("Presentation0: $presentation0\n")
 
     println("====================================================")
-    println("                     Verifier")
+    println("                     Verifier                       ")
     println("====================================================")
     val verifiedLoginCredential = verifyPresentation<LoginCredential>(presentation0, trustedIssuers,"12345", verifier)
     println("Verified Login Credential: $verifiedLoginCredential\n")
 
     // Second example
     println("====================================================")
-    println("                     Issuer")
+    println("                     Issuer                         ")
     println("====================================================")
     val claims1 = IdCredential("Alice", "Wonderland", "alice@example.com", "1940-01-01", Address("123 Main St", "Anytown", "Anystate", "US"))
     println("Claims for credential1: $claims1\n")
@@ -62,14 +63,14 @@ fun main(args: Array<String>) {
     println("Credential1: $credential1\n")
 
     println("====================================================")
-    println("                     Wallet")
+    println("                     Wallet                         ")
     println("====================================================")
     val releaseClaims1 = IdCredential("disclose", "disclose", "", "", Address("disclose", "disclose", "", ""))
     val presentation1 = createPresentation(credential1, releaseClaims1, verifier, "12345", holderKey)
     println("Presentation1: $presentation1\n")
 
     println("====================================================")
-    println("                     Verifier")
+    println("                     Verifier                       ")
     println("====================================================")
     val verifiedIdCredential = verifyPresentation<IdCredential>(presentation1, trustedIssuers,"12345", verifier)
     println("Verified Id Credential: $verifiedIdCredential")
