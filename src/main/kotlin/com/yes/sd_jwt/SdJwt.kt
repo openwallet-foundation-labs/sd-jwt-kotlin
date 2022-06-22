@@ -110,7 +110,22 @@ inline fun <reified T> createPresentation(credential: String, releaseClaims: T, 
     releaseDocument.put("aud", audience)
     releaseDocument.put("_sd", buildReleaseSdClaims(rC, svc.getJSONObject("_sd")))
 
-    // TODO Check if credential has holder binding. If so force signing of the SD-JWT Release.
+    // Check if credential has holder binding. If so throw an exception
+    // if no holder key is passed to the method.
+    val body = JSONObject(b64Decode(credentialParts[1]))
+    if (!body.isNull("sub_jwk") && holderKey == null) {
+        throw Exception("SD-JWT has holder binding. SD-JWT-R must be signed with the holder key.")
+    }
+
+    // Check whether the bound key is the same as the key that
+    // was passed to this method
+    if (!body.isNull("sub_jwk") && holderKey != null) {
+        val boundKey = JWK.parse(body.getJSONObject("sub_jwk").toString())
+        if (jwkThumbprint(boundKey) != jwkThumbprint(holderKey)) {
+            throw Exception("Passed holder key is not the same as in the credential")
+        }
+    }
+
     val releaseDocumentEncoded = buildJWT(releaseDocument.toString(), holderKey)
 
     return "${credentialParts[0]}.${credentialParts[1]}.${credentialParts[2]}.$releaseDocumentEncoded"
@@ -205,6 +220,7 @@ fun verifyJWTSignature(jwt: String, trustedIssuer: Map<String, String>, sdJwt: B
         throw Exception("Could not find signing key to verify JWT")
     }
 
+    // Create verifier object
     val jwk = JWK.parse(trustedIssuer[issuer])
     val verifier = when (jwk.keyType) {
         KeyType.OKP -> {
