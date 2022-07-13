@@ -60,6 +60,17 @@ fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONOb
     return Pair(svcClaims, sdClaims)
 }
 
+/**
+ * This method creates a SD-JWT credentials that contains the claims
+ * passed to the method and is signed with the issuer's key.
+ *
+ * @param claims        A kotlinx serializable data class that contains the user's claims
+ * @param holderPubKey  The holder's public key if holder binding is required
+ * @param issuer        URL that identifies the issuer
+ * @param issuerKey     The issuer's private key to sign the SD-JWT
+ * @param depth         Specifies to which level the claims should be individually disclosable (default 0)
+ * @return              Serialized SD-JWT + SVC to send to the holder
+ */
 inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: String, issuerKey: JWK, depth: Int = 0): String {
     val jsonClaims = JSONObject(Json.encodeToString(claims))
     val (svcClaims, sdClaims) = buildSvcAndSdClaims(jsonClaims, depth)
