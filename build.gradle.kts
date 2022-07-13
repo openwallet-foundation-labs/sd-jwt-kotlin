@@ -4,14 +4,17 @@ plugins {
     kotlin("jvm") version "1.6.21"
     kotlin("plugin.serialization") version "1.6.21"
     application
+    `maven-publish`
+    id("org.jetbrains.dokka") version "1.6.20"
 }
 
 group = "com.yes"
-version = "1.0-SNAPSHOT"
+version = "0.0-SNAPSHOT"
 
 dependencies {
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
+    implementation("org.jetbrains.dokka:dokka-gradle-plugin:1.6.20")
 
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
     implementation("com.nimbusds:nimbus-jose-jwt:9.23")
@@ -52,12 +55,59 @@ tasks.withType<Jar> {
         attributes["Main-Class"] = "com.yes.sd_jwt.MainKt"
     }
 
-    // To add all of the dependencies
-    from(sourceSets.main.get().output)
+    // To add all the dependencies
+    /*from(sourceSets.main.get().output)
 
     dependsOn(configurations.runtimeClasspath)
     from({
         configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
     })
-    duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.INCLUDE
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE*/
+}
+
+// Generates source jar
+java {
+    withSourcesJar()
+}
+
+sourceSets {
+    main {
+        java.srcDir("src/main/kotlin")
+    }
+}
+
+// Create Javadoc jar
+java {
+    withJavadocJar()
+}
+
+val javadocJar = tasks.named<Jar>("javadocJar") {
+    from(tasks.named("dokkaJavadoc"))
+}
+
+// Tutorial: https://docs.gradle.org/current/userguide/publishing_maven.html
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            pom {
+                name.set("SD-JWT Kotlin Library (Alpha)")
+                description.set("yes.com SD-JWT Kotlin Library")
+                url.set("https://yes.com")
+                developers {
+                    developer {
+                        id.set("fabian-hk")
+                        name.set("Fabian Hauck")
+                        email.set("fabianh@yes.com")
+                    }
+                }
+                scm {
+                    connection.set("scm:git:git@github.com:IDunion/SD-JWT-Kotlin.git")
+                    developerConnection.set("scm:git:ssh://github.com:IDunion/SD-JWT-Kotlin.git")
+                    url.set("https://github.com/IDunion/SD-JWT-Kotlin")
+                }
+            }
+
+            from(components["java"])
+        }
+    }
 }
