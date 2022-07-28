@@ -1,5 +1,6 @@
-package com.yes.sd_jwt
+package org.sd_jwt
 
+/** @suppress */
 fun main(args: Array<String>) {
     // TODO add CLI
 }
