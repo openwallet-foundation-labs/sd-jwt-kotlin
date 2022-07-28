@@ -1,4 +1,4 @@
-package com.yes.sd_jwt
+package org.sd_jwt
 
 import com.nimbusds.jose.jwk.OctetKeyPair
 import kotlinx.serialization.Serializable

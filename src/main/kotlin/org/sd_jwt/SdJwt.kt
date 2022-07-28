@@ -1,4 +1,4 @@
-package com.yes.sd_jwt
+package org.sd_jwt
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -24,12 +24,14 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.*
 
+/** @suppress */
 fun createHash(value: String): String {
     val hashFunction = MessageDigest.getInstance("SHA-256")
     val messageDigest = hashFunction.digest(value.toByteArray(Charsets.UTF_8))
     return b64Encoder(messageDigest)
 }
 
+/** @suppress */
 fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONObject> {
     val svcClaims = JSONObject()
     val sdClaims = JSONObject()
@@ -61,7 +63,7 @@ fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONOb
 }
 
 /**
- * This method creates a SD-JWT credentials that contains the claims
+ * This method creates a SD-JWT credential that contains the claims
  * passed to the method and is signed with the issuer's key.
  *
  * @param claims        A kotlinx serializable data class that contains the user's claims
@@ -83,7 +85,7 @@ inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: S
         .put("iss", issuer)
         .put("iat", date)
         .put("exp", date + 3600 * 24)
-        .put("hash_alg", "sha-256")
+        .put("sd_hash_alg", "sha-256")
         .put("sd_digests", sdClaims)
     if (holderPubKey != null) {
         claimsSet.put("sub_jwk", holderPubKey.toJSONObject())
@@ -94,6 +96,7 @@ inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: S
     return "$sdJwtEncoded.$svcEncoded"
 }
 
+/** @suppress */
 fun buildReleaseSdClaims(releaseClaims: JSONObject, svc: JSONObject): JSONObject {
     val releaseClaimsResult = JSONObject()
 
@@ -112,6 +115,17 @@ fun buildReleaseSdClaims(releaseClaims: JSONObject, svc: JSONObject): JSONObject
     return releaseClaimsResult
 }
 
+/**
+ * This method takes a SD-JWT and SVC and creates a presentation that
+ * only discloses the desired claims.
+ *
+ * @param credential    A string containing the SD-JWT and SVC concatenated by a period character
+ * @param releaseClaims An object of the same class as the credential and every claim that should be disclosed contains the string "disclose"
+ * @param audience      The value of the "aud" claim in the SD-JWT Release
+ * @param nonce         The value of the "nonce" claim in the SD-JWT Release
+ * @param holderKey     If holder binding is required, you have to pass the private key, otherwise you can just pass null
+ * @return              Serialized SD-JWT + SD-JWT Release concatenated by a period character
+ */
 inline fun <reified T> createPresentation(credential: String, releaseClaims: T, audience: String, nonce: String, holderKey: JWK?): String {
     // Extract svc as the last part of the credential and parse it as a JSON object
     val credentialParts = credential.split(".")
@@ -144,6 +158,7 @@ inline fun <reified T> createPresentation(credential: String, releaseClaims: T, 
     return "${credentialParts[0]}.${credentialParts[1]}.${credentialParts[2]}.$releaseDocumentEncoded"
 }
 
+/** @suppress */
 fun buildJWT(claims: String, key: JWK?): String {
     if (key == null) {
         val header = b64Encoder("{\"alg\":\"none\"}")
@@ -169,6 +184,7 @@ fun buildJWT(claims: String, key: JWK?): String {
     }
 }
 
+/** @suppress */
 fun parseAndVerifySdClaims(sdClaims: JSONObject, svc: JSONObject): JSONObject {
     val sdClaimsParsed = JSONObject()
     for (key in svc.keys()) {
@@ -190,6 +206,17 @@ fun parseAndVerifySdClaims(sdClaims: JSONObject, svc: JSONObject): JSONObject {
     return sdClaimsParsed
 }
 
+/**
+ * The method takes a serialized SD-JWT + SD-JWT Release, parses it and checks
+ * the validity of the credential. The disclosed claims are returned in an object
+ * of the credential class.
+ *
+ * @param presentation  Serialized presentation containing the SD-JWT and SD-JWT Release
+ * @param trustedIssuer A map that contains issuer urls and the corresponding JWKs in JSON format serialized as strings
+ * @param expectedNonce The value that is expected in the nonce claim of the SD-JWT Release
+ * @param expectedAud   The value that is expected in the aud claim of the SD-JWT Release
+ * @return              An object of the class filled with the disclosed claims
+ */
 inline fun <reified T> verifyPresentation(presentation: String, trustedIssuer: Map<String, String>, expectedNonce: String, expectedAud: String): T {
     val pS = presentation.split(".")
     if (pS.size != 6) {
@@ -212,6 +239,7 @@ inline fun <reified T> verifyPresentation(presentation: String, trustedIssuer: M
     return Json.decodeFromString(sdClaimsParsed.toString())
 }
 
+/** @suppress */
 fun verifyJWTSignature(jwt: String, trustedIssuer: Map<String, String>, sdJwt: Boolean): JSONObject {
     val splits = jwt.split(".")
     val header = JSONObject(b64Decode(splits[0]))
@@ -256,6 +284,7 @@ fun verifyJWTSignature(jwt: String, trustedIssuer: Map<String, String>, sdJwt: B
     return body
 }
 
+/** @suppress */
 fun getHolderBinding(sdJwt: JSONObject): Map<String, String>  {
     return if (sdJwt.isNull("sub_jwk")) {
         mapOf()
@@ -264,6 +293,7 @@ fun getHolderBinding(sdJwt: JSONObject): Map<String, String>  {
     }
 }
 
+/** @suppress */
 fun verifyJwtClaims(claims: JSONObject, expectedNonce: String? = null, expectedAud: String? = null) {
     if (expectedNonce != null && claims.getString("nonce") != expectedNonce) {
         throw Exception("JWT claims verification failed (invalid nonce)")
@@ -282,18 +312,22 @@ fun verifyJwtClaims(claims: JSONObject, expectedNonce: String? = null, expectedA
     }
 }
 
+/** @suppress */
 fun b64Encoder(str: String): String {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(str.toByteArray())
 }
 
+/** @suppress */
 fun b64Encoder(b: ByteArray): String {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(b)
 }
 
+/** @suppress */
 fun b64Decode(str: String): String {
     return String(Base64.getUrlDecoder().decode(str))
 }
 
+/** @suppress */
 fun jwkThumbprint(jwk: JWK): String {
     return b64Encoder(jwk.computeThumbprint().decode())
 }

@@ -6,15 +6,16 @@ plugins {
     application
     `maven-publish`
     id("org.jetbrains.dokka") version "1.6.20"
+    signing
 }
 
-group = "com.yes"
+group = "org.sd_jwt"
 version = "0.0-SNAPSHOT"
 
 dependencies {
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.dokka:dokka-gradle-plugin:1.6.20")
+    //implementation("org.jetbrains.dokka:dokka-gradle-plugin:1.6.20")
 
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
     implementation("com.nimbusds:nimbus-jose-jwt:9.23")
@@ -36,7 +37,7 @@ tasks.withType<KotlinCompile> {
 }
 
 application {
-    mainClass.set("com.yes.sd_jwt.MainKt")
+    mainClass.set("org.sd_jwt.MainKt")
 }
 repositories {
     mavenCentral()
@@ -52,7 +53,7 @@ compileTestKotlin.kotlinOptions {
 
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = "com.yes.sd_jwt.MainKt"
+        attributes["Main-Class"] = "org.sd_jwt.MainKt"
     }
 
     // To add all the dependencies
@@ -90,14 +91,20 @@ publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             pom {
-                name.set("SD-JWT Kotlin Library (Alpha)")
-                description.set("yes.com SD-JWT Kotlin Library")
-                url.set("https://yes.com")
+                name.set("SD-JWT Kotlin Library")
+                description.set("SD-JWT Kotlin Library (currently in beta status)")
+                url.set("https://github.com/IDunion/SD-JWT-Kotlin")
                 developers {
                     developer {
                         id.set("fabian-hk")
                         name.set("Fabian Hauck")
-                        email.set("fabianh@yes.com")
+                        email.set("contact@fabianhauck.de")
+                    }
+                }
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/licenses/MIT")
                     }
                 }
                 scm {
@@ -110,4 +117,15 @@ publishing {
             from(components["java"])
         }
     }
+    repositories {
+        maven {
+            url = uri("file://home/fabian/.m2/repository/")
+        }
+    }
+}
+
+
+signing {
+    useGpgCmd()
+    sign(publishing.publications["mavenJava"])
 }
