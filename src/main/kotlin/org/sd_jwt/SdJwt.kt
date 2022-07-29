@@ -39,7 +39,11 @@ fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONOb
     val secureRandom = SecureRandom()
 
     for (key in claims.keys()) {
-        if (claims[key] is String || claims[key] is JSONArray || depth == 0) {
+        if (claims[key] is JSONObject && depth > 0) {
+            val (svcClaimsChild, sdClaimsChild) = buildSvcAndSdClaims(claims.getJSONObject(key), depth - 1)
+            svcClaims.put(key, svcClaimsChild)
+            sdClaims.put(key, sdClaimsChild)
+        } else {
             // Generate salt
             val randomness = ByteArray(16)
             secureRandom.nextBytes(randomness)
@@ -50,12 +54,6 @@ fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONOb
             svcClaims.put(key, saltValueEncoded)
 
             sdClaims.put(key, createHash(saltValueEncoded))
-        } else if (claims[key] is JSONObject && depth > 0) {
-            val (svcClaimsChild, sdClaimsChild) = buildSvcAndSdClaims(claims.getJSONObject(key), depth - 1)
-            svcClaims.put(key, svcClaimsChild)
-            sdClaims.put(key, sdClaimsChild)
-        } else {
-            throw Exception("Cannot encode class")
         }
     }
 
@@ -74,7 +72,8 @@ fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONOb
  * @return              Serialized SD-JWT + SVC to send to the holder
  */
 inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: String, issuerKey: JWK, depth: Int = 0): String {
-    val jsonClaims = JSONObject(Json.encodeToString(claims))
+    val format = Json { encodeDefaults = true }
+    val jsonClaims = JSONObject(format.encodeToString(claims))
     val (svcClaims, sdClaims) = buildSvcAndSdClaims(jsonClaims, depth)
 
     val svc = JSONObject().put("sd_release", svcClaims)
@@ -101,15 +100,13 @@ fun buildReleaseSdClaims(releaseClaims: JSONObject, svc: JSONObject): JSONObject
     val releaseClaimsResult = JSONObject()
 
     for (key in releaseClaims.keys()) {
-        if (releaseClaims[key] is String && releaseClaims[key] == "disclose") {
-            releaseClaimsResult.put(key, svc.getString(key))
-        } else if (releaseClaims[key] is JSONObject && svc[key] is String) {
-            releaseClaimsResult.put(key, svc.getString(key))
-        } else if (releaseClaims[key] is JSONArray && releaseClaims.getJSONArray(key)[0] == "disclose") {
-            releaseClaimsResult.put(key, svc.getString(key))
-        } else if (releaseClaims[key] is JSONObject) {
+        if (releaseClaims[key] is JSONObject && svc[key] is JSONObject) {
             val rCR = buildReleaseSdClaims(releaseClaims.getJSONObject(key), svc.getJSONObject(key))
             releaseClaimsResult.put(key, rCR)
+        } else if (releaseClaims[key] != null && svc[key] is String) {
+            releaseClaimsResult.put(key, svc.getString(key))
+        } else {
+            throw Exception("Release claims and SVC structure is different")
         }
     }
     return releaseClaimsResult
@@ -118,7 +115,7 @@ fun buildReleaseSdClaims(releaseClaims: JSONObject, svc: JSONObject): JSONObject
 /**
  * This method takes a SD-JWT and SVC and creates a presentation that
  * only discloses the desired claims.
- *
+ * TODO update description
  * @param credential    A string containing the SD-JWT and SVC concatenated by a period character
  * @param releaseClaims An object of the same class as the credential and every claim that should be disclosed contains the string "disclose"
  * @param audience      The value of the "aud" claim in the SD-JWT Release
