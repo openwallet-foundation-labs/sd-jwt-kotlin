@@ -3,16 +3,21 @@ package org.sd_jwt
 import com.nimbusds.jose.jwk.OctetKeyPair
 import kotlinx.serialization.Serializable
 import org.junit.jupiter.api.Test
-import kotlin.test.assertEquals
 
 internal class SdJwtKtTest {
 
     @Serializable
-    private data class LoginCredential(val given_name: String = "", val family_name: String = "", val email: String = "")
+    private data class LoginCredential(
+        val given_name: String? = null,
+        val family_name: String? = null,
+        val email: String? = null,
+        val b: Boolean? = null,
+        val age: Int? = null
+    )
     @Serializable
-    private data class Address(val street_address: String = "", val locality: String = "", val region: String = "", val country: String = "")
+    private data class Address(val street_address: String? = null, val locality: String? = null, val region: String? = null, val country: String? = null)
     @Serializable
-    private data class IdCredential(val given_name: String = "", val family_name: String = "", val email: String = "", val birthday: String = "", val nicknames: Set<String> = setOf(), val address: Address = Address())
+    private data class IdCredential(val given_name: String? = null, val family_name: String? = null, val email: String? = null, val birthday: String? = null, val nicknames: Set<String>? = null, val address: Address? = null)
 
     private val verifier = "http://verifier.example.com"
     private val issuer = "http://issuer.example.com"
@@ -30,7 +35,7 @@ internal class SdJwtKtTest {
         println("====================================================")
         println("                     Issuer                         ")
         println("====================================================")
-        val claims0 = LoginCredential("Alice", "Wonderland", "alice@example.com")
+        val claims0 = LoginCredential("Alice", "Wonderland", "alice@example.com", false, 21)
         println("Claims for credential0: $claims0\n")
 
         val credential0 = createCredential(claims0, null, issuer, issuerKey)
@@ -39,7 +44,7 @@ internal class SdJwtKtTest {
         println("====================================================")
         println("                     Wallet                         ")
         println("====================================================")
-        val releaseClaims0 = LoginCredential("disclose", "", "disclose")
+        val releaseClaims0 = LoginCredential(given_name = "",  email = "", age = 0)
         val presentation0 = createPresentation(credential0, releaseClaims0, verifier, "12345", null)
         println("Presentation0: $presentation0\n")
 
@@ -51,7 +56,32 @@ internal class SdJwtKtTest {
     }
 
     @Test
-    fun testAdvancedCredential() {
+    fun testAdvancedCredential0() {
+        println("====================================================")
+        println("                     Issuer                         ")
+        println("====================================================")
+        val claims1 = IdCredential("Alice", "Wonderland", "alice@example.com", "1940-01-01", setOf("A", "B"), Address("123 Main St", "Anytown", "Anystate", "US"))
+        println("Claims for credential1: $claims1\n")
+
+        val credential1 = createCredential(claims1, holderPublicKey, issuer, issuerKey, 0)
+        println("Credential1: $credential1\n")
+
+        println("====================================================")
+        println("                     Wallet                         ")
+        println("====================================================")
+        val releaseClaims1 = IdCredential(given_name = "", family_name = "", nicknames = setOf(), address = Address())
+        val presentation1 = createPresentation(credential1, releaseClaims1, verifier, "12345", holderKey)
+        println("Presentation1: $presentation1\n")
+
+        println("====================================================")
+        println("                     Verifier                       ")
+        println("====================================================")
+        val verifiedIdCredential = verifyPresentation<IdCredential>(presentation1, trustedIssuers,"12345", verifier)
+        println("Verified Id Credential: $verifiedIdCredential")
+    }
+
+    @Test
+    fun testAdvancedCredential1() {
         println("====================================================")
         println("                     Issuer                         ")
         println("====================================================")
@@ -64,7 +94,7 @@ internal class SdJwtKtTest {
         println("====================================================")
         println("                     Wallet                         ")
         println("====================================================")
-        val releaseClaims1 = IdCredential("disclose", "disclose", "", "", setOf("disclose"), Address("disclose", "disclose", "", ""))
+        val releaseClaims1 = IdCredential(given_name = "", family_name = "", nicknames = setOf(), address = Address(street_address = "", locality = ""))
         val presentation1 = createPresentation(credential1, releaseClaims1, verifier, "12345", holderKey)
         println("Presentation1: $presentation1\n")
 
