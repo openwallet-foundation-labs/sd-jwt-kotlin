@@ -21,8 +21,9 @@ If you have Docker installed you can simply run:
 
 ### Initialization
 
-First you need to define your credential as a kotlinx
-serializable data class.
+First you need to define your credential as a 
+[kotlinx serializable](https://github.com/Kotlin/kotlinx.serialization) 
+data class.
 
 ```kotlin
 @Serializable
