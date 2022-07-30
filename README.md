@@ -6,8 +6,8 @@ library.
 
 ## Checking Out the Implementation
 
-In the [Main.kt](src/main/kotlin/com/yes/sd_jwt/Main.kt) file 
-there are two examples that show how the library can be used
+In the [SdJwtKtTest.kt](src/test/kotlin/org/sd_jwt/SdJwtKtTest.kt) file 
+there are examples that show how the library can be used
 on the issuance, wallet and verifier side.
 
 ### Running the Examples
@@ -16,3 +16,53 @@ If you have Docker installed you can simply run:
 
 1. ``docker build -t sd-jwt .``
 2. ``docker run -it --rm sd-jwt``
+
+## Library Usage
+
+### Initialization
+
+First you need to define your credential as a kotlinx
+serializable data class.
+
+```kotlin
+@Serializable
+data class SimpleTestCredential(
+    @SerialName("given_name") val givenName: String? = null,
+    @SerialName("family_name") val familyName: String? = null,
+    val email: String? = null,
+    val b: Boolean? = null,
+    val age: Int? = null
+)
+```
+
+Then you need a few variables to get started.
+
+```kotlin
+val verifier = "http://verifier.example.com"
+val issuer = "http://issuer.example.com"
+
+val issuerKeyJson = """{"kty":"OKP","d":"Pp1foKt6rJAvx0igrBEfOgrT0dgMVQDHmgJZbm2h518","crv":"Ed25519","kid":"IssuerKey","x":"1NYF4EFS2Ov9hqt35fVt2J-dktLV29hs8UFjxbOXnho"}"""
+val issuerKey = OctetKeyPair.parse(issuerKeyJson)
+
+val trustedIssuers = mutableMapOf<String, String>(issuer to issuerKey.toPublicJWK().toJSONString())
+```
+
+### Issuer Creating the Credential
+
+```kotlin
+val claims = SimpleTestCredential("Alice", "Wonderland", "alice@example.com", false, 21)
+val credential = createCredential(claims, null, issuer, issuerKey)
+```
+
+### Wallet Creating the Presentation
+
+```kotlin
+val releaseClaims = SimpleTestCredential(givenName = "",  email = "", age = 0) // Non-null claims will be revealed
+val presentation = createPresentation(credential, releaseClaims, verifier, "12345", null)
+```
+
+### Verifier Parsing and Verifying the Credential
+
+```kotlin
+val verifiedSimpleTestCredential = verifyPresentation<SimpleTestCredential>(presentation, trustedIssuers, "12345", verifier)
+```
