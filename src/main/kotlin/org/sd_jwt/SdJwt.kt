@@ -64,7 +64,7 @@ fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONOb
  * This method creates a SD-JWT credential that contains the claims
  * passed to the method and is signed with the issuer's key.
  *
- * @param claims        A kotlinx serializable data class that contains the user's claims
+ * @param claims        A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
  * @param holderPubKey  The holder's public key if holder binding is required
  * @param issuer        URL that identifies the issuer
  * @param issuerKey     The issuer's private key to sign the SD-JWT
@@ -115,9 +115,9 @@ fun buildReleaseSdClaims(releaseClaims: JSONObject, svc: JSONObject): JSONObject
 /**
  * This method takes a SD-JWT and SVC and creates a presentation that
  * only discloses the desired claims.
- * TODO update description
+ *
  * @param credential    A string containing the SD-JWT and SVC concatenated by a period character
- * @param releaseClaims An object of the same class as the credential and every claim that should be disclosed contains the string "disclose"
+ * @param releaseClaims An object of the same class as the credential and every claim that should be disclosed contains a non-null value
  * @param audience      The value of the "aud" claim in the SD-JWT Release
  * @param nonce         The value of the "nonce" claim in the SD-JWT Release
  * @param holderKey     If holder binding is required, you have to pass the private key, otherwise you can just pass null
