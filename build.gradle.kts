@@ -124,8 +124,6 @@ publishing {
             url = uri(if (version.toString().endsWith("SNAPSHOT")) snapshotUrl else releaseUrl)
             val ossrhUsername: String by properties
             val ossrhPassword: String by properties
-            println(ossrhUsername)
-            println(ossrhPassword)
             credentials {
                 username = ossrhUsername
                 password = ossrhPassword
