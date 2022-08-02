@@ -9,8 +9,8 @@ plugins {
     signing
 }
 
-group = "org.sd_jwt"
-version = "0.0-SNAPSHOT"
+group = "org.sd-jwt"
+version = "0.0.0-SNAPSHOT"
 
 dependencies {
     testImplementation(kotlin("test"))
@@ -119,7 +119,17 @@ publishing {
     }
     repositories {
         maven {
-            url = uri("file://home/fabian/.m2/repository/")
+            val snapshotUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+            val releaseUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            url = uri(if (version.toString().endsWith("SNAPSHOT")) snapshotUrl else releaseUrl)
+            val ossrhUsername: String by properties
+            val ossrhPassword: String by properties
+            println(ossrhUsername)
+            println(ossrhPassword)
+            credentials {
+                username = ossrhUsername
+                password = ossrhPassword
+            }
         }
     }
 }
