@@ -6,7 +6,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 internal class InterOpTest {
 
@@ -100,6 +99,8 @@ internal class InterOpTest {
         val releaseClaims = SimpleCredential(givenName = "", familyName = "", address = Address())
         val presentationGen = createPresentation(credential, releaseClaims, verifier, nonce, holderKey)
 
+        println("Presentation: $presentationGen")
+
         val (sdJwtGen, sdJwtRGen) = splitPresentation(presentationGen)
         val (sdJwt, sdJwtR) = splitPresentation(presentation)
         assertEquals(sdJwt, sdJwtGen)
@@ -142,6 +143,8 @@ internal class InterOpTest {
 
         val releaseClaims = SimpleCredential(givenName = "", familyName = "", address = Address(region = "", country = ""), birthdate = "")
         val presentationGen = createPresentation(credential, releaseClaims, verifier, nonce, holderKey)
+
+        println("Presentation: $presentationGen")
 
         val (sdJwtGen, sdJwtRGen) = splitPresentation(presentationGen)
         val (sdJwt, sdJwtR) = splitPresentation(presentation)

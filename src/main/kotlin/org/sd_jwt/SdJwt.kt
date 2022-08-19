@@ -71,7 +71,13 @@ fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONOb
  * @param depth         Specifies to which level the claims should be individually disclosable (default 0)
  * @return              Serialized SD-JWT + SVC to send to the holder
  */
-inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: String, issuerKey: JWK, depth: Int = 0): String {
+inline fun <reified T> createCredential(
+    claims: T,
+    holderPubKey: JWK?,
+    issuer: String,
+    issuerKey: JWK,
+    depth: Int = 0
+): String {
     val format = Json { encodeDefaults = true }
     val jsonClaims = JSONObject(format.encodeToString(claims))
     val (svcClaims, sdClaims) = buildSvcAndSdClaims(jsonClaims, depth)
@@ -96,43 +102,12 @@ inline fun <reified T> createCredential(claims: T, holderPubKey: JWK?, issuer: S
 }
 
 /** @suppress */
-fun buildReleaseSdClaims(releaseClaims: JSONArray, svc: JSONArray): JSONArray {
-    val releaseClaimsResult = JSONArray()
-
-    for (item in svc) {
-        if (releaseClaims[0] is JSONObject && item is JSONObject) {
-            val rCR = buildReleaseSdClaims(releaseClaims.getJSONObject(0), item)
-            releaseClaimsResult.put(rCR)
-        } else if (releaseClaims[0] is JSONArray && item is JSONArray) {
-            val rCRA = buildReleaseSdClaims(releaseClaims.getJSONArray(0), item)
-            releaseClaimsResult.put(rCRA)
-        } else if (releaseClaims[0] != null && item is String) {
-            releaseClaimsResult.put(item)
-        } else {
-            throw Exception("Release claims and SVC structure is different")
-        }
+fun chooseClaim(releaseClaim: Any?, svcValue: Any?): String {
+    if (releaseClaim != null && svcValue is String) {
+        return svcValue
+    } else {
+        throw Exception("Release claims and SVC structure is different")
     }
-
-    return releaseClaimsResult
-}
-/** @suppress */
-fun buildReleaseSdClaims(releaseClaims: JSONObject, svc: JSONObject): JSONObject {
-    val releaseClaimsResult = JSONObject()
-
-    for (key in releaseClaims.keys()) {
-        if (releaseClaims[key] is JSONObject && svc[key] is JSONObject) {
-            val rCR = buildReleaseSdClaims(releaseClaims.getJSONObject(key), svc.getJSONObject(key))
-            releaseClaimsResult.put(key, rCR)
-        } else if (releaseClaims[key] is JSONArray && svc[key] is JSONArray) {
-            val rCRA = buildReleaseSdClaims(releaseClaims.getJSONArray(key), svc.getJSONArray(key))
-            releaseClaimsResult.put(key, rCRA)
-        } else if (releaseClaims[key] != null && svc[key] is String) {
-            releaseClaimsResult.put(key, svc.getString(key))
-        } else {
-            throw Exception("Release claims and SVC structure is different")
-        }
-    }
-    return releaseClaimsResult
 }
 
 /**
@@ -146,7 +121,13 @@ fun buildReleaseSdClaims(releaseClaims: JSONObject, svc: JSONObject): JSONObject
  * @param holderKey     If holder binding is required, you have to pass the private key, otherwise you can just pass null
  * @return              Serialized SD-JWT + SD-JWT Release concatenated by a period character
  */
-inline fun <reified T> createPresentation(credential: String, releaseClaims: T, audience: String, nonce: String, holderKey: JWK?): String {
+inline fun <reified T> createPresentation(
+    credential: String,
+    releaseClaims: T,
+    audience: String,
+    nonce: String,
+    holderKey: JWK?
+): String {
     // Extract svc as the last part of the credential and parse it as a JSON object
     val credentialParts = credential.split(".")
     val svc = JSONObject(b64Decode(credentialParts[3]))
@@ -155,7 +136,7 @@ inline fun <reified T> createPresentation(credential: String, releaseClaims: T, 
     val releaseDocument = JSONObject()
     releaseDocument.put("nonce", nonce)
     releaseDocument.put("aud", audience)
-    releaseDocument.put("sd_release", buildReleaseSdClaims(rC, svc.getJSONObject("sd_release")))
+    releaseDocument.put("sd_release", walkByStructure(rC, svc.getJSONObject("sd_release"), ::chooseClaim))
 
     // Check if credential has holder binding. If so throw an exception
     // if no holder key is passed to the method.
@@ -192,12 +173,14 @@ fun buildJWT(claims: String, key: JWK?): String {
             signedSdJwt.sign(signer)
             signedSdJwt.serialize()
         }
+
         KeyType.RSA -> {
             val signer = RSASSASigner(key as RSAKey)
             val signedSdJwt = JWSObject(JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID).build(), Payload(claims))
             signedSdJwt.sign(signer)
             signedSdJwt.serialize()
         }
+
         else -> {
             throw NotImplementedError("JWT signing algorithm not implemented")
         }
@@ -205,58 +188,20 @@ fun buildJWT(claims: String, key: JWK?): String {
 }
 
 /** @suppress */
-fun parseAndVerifySdClaims(sdClaims: JSONArray, svc: JSONArray): JSONArray {
-    val sdClaimsParsed = JSONArray()
-
-    for (i in 0 until sdClaims.length()) {
-        if (sdClaims[i] is String && svc[i] is String) {
-            // Verify that the hash in the SD-JWT matches the one created from the SD-JWT Release
-            if (createHash(svc.getString(i)) != sdClaims.getString(i)) {
-                throw Exception("Could not verify credential claims (Claim ${svc.getString(i)} has wrong hash value)")
-            }
-            val sVArray = JSONArray(svc.getString(i))
-            if (sVArray.length() != 2) {
-                throw Exception("Could not verify credential claims (Claim ${svc.getString(i)} has wrong number of array entries)")
-            }
-            sdClaimsParsed.put(sVArray[1])
-        } else if (sdClaims[i] is JSONObject && svc[i] is JSONObject) {
-            val sCPChild = parseAndVerifySdClaims(sdClaims.getJSONObject(i), svc.getJSONObject(i))
-            sdClaimsParsed.put(sCPChild)
-        } else if (sdClaims[i] is JSONArray && svc[i] is JSONArray) {
-            val sCPAChild = parseAndVerifySdClaims(sdClaims.getJSONArray(i), svc.getJSONArray(i))
-            sdClaimsParsed.put(sCPAChild)
-        } else {
-            throw Exception("sd_digest and SVC structure is different")
+fun verifyClaim(sdDigest: Any?, svc: Any?): Any {
+    if (sdDigest is String && svc is String) {
+        // Verify that the hash in the SD-JWT matches the one created from the SD-JWT Release
+        if (createHash(svc) != sdDigest) {
+            throw Exception("Could not verify credential claims (Claim $svc has wrong hash value)")
         }
-    }
-
-    return sdClaimsParsed
-}
-/** @suppress */
-fun parseAndVerifySdClaims(sdClaims: JSONObject, svc: JSONObject): JSONObject {
-    val sdClaimsParsed = JSONObject()
-    for (key in svc.keys()) {
-        if (sdClaims[key] is String && svc[key] is String) {
-            // Verify that the hash in the SD-JWT matches the one created from the SD-JWT Release
-            if (createHash(svc.getString(key)) != sdClaims.getString(key)) {
-                throw Exception("Could not verify credential claims (Claim $key has wrong hash value)")
-            }
-            val sVArray = JSONArray(svc.getString(key))
-            if (sVArray.length() != 2) {
-                throw Exception("Could not verify credential claims (Claim $key has wrong number of array entries)")
-            }
-            sdClaimsParsed.put(key, sVArray[1])
-        } else if (sdClaims[key] is JSONObject && svc[key] is JSONObject) {
-            val sCPChild = parseAndVerifySdClaims(sdClaims.getJSONObject(key), svc.getJSONObject(key))
-            sdClaimsParsed.put(key, sCPChild)
-        } else if (sdClaims[key] is JSONArray && svc[key] is JSONArray) {
-            val sCPAChild = parseAndVerifySdClaims(sdClaims.getJSONArray(key), svc.getJSONArray(key))
-            sdClaimsParsed.put(key, sCPAChild)
-        } else {
-            throw Exception("sd_digest and SVC structure is different")
+        val sVArray = JSONArray(svc)
+        if (sVArray.length() != 2) {
+            throw Exception("Could not verify credential claims (Claim $svc has wrong number of array entries)")
         }
+        return sVArray[1]
+    } else {
+        throw Exception("sd_digest and SVC structure is different")
     }
-    return sdClaimsParsed
 }
 
 /**
@@ -270,7 +215,12 @@ fun parseAndVerifySdClaims(sdClaims: JSONObject, svc: JSONObject): JSONObject {
  * @param expectedAud   The value that is expected in the aud claim of the SD-JWT Release
  * @return              An object of the class filled with the disclosed claims
  */
-inline fun <reified T> verifyPresentation(presentation: String, trustedIssuer: Map<String, String>, expectedNonce: String, expectedAud: String): T {
+inline fun <reified T> verifyPresentation(
+    presentation: String,
+    trustedIssuer: Map<String, String>,
+    expectedNonce: String,
+    expectedAud: String
+): T {
     val pS = presentation.split(".")
     if (pS.size != 6) {
         throw Exception("Presentation has wrong format (Needed 6 parts separated by '.')")
@@ -278,35 +228,36 @@ inline fun <reified T> verifyPresentation(presentation: String, trustedIssuer: M
 
     // Verify SD-JWT
     val sdJwt = "${pS[0]}.${pS[1]}.${pS[2]}"
-    val sdJwtParsed = verifyJWTSignature(sdJwt, trustedIssuer, true)
+    val sdJwtParsed = verifySDJWT(sdJwt, trustedIssuer)
     verifyJwtClaims(sdJwtParsed)
 
     // Verify SD-JWT Release
     val sdJwtRelease = "${pS[3]}.${pS[4]}.${pS[5]}"
-    val holderBinding = getHolderBinding(sdJwtParsed)
-    val sdJwtReleaseParsed = verifyJWTSignature(sdJwtRelease, holderBinding, false)
+    val holderPubKey = if (!sdJwtParsed.isNull("cnf")) {
+        sdJwtParsed.getJSONObject("cnf").toString()
+    } else {
+        null
+    }
+    val sdJwtReleaseParsed = verifySDJWTR(sdJwtRelease, holderPubKey)
     verifyJwtClaims(sdJwtReleaseParsed, expectedNonce, expectedAud)
 
-    val sdClaimsParsed = parseAndVerifySdClaims(sdJwtParsed.getJSONObject("sd_digests"), sdJwtReleaseParsed.getJSONObject("sd_release"))
+    val sdClaimsParsed =
+        walkByStructure(
+            sdJwtParsed.getJSONObject("sd_digests"),
+            sdJwtReleaseParsed.getJSONObject("sd_release"),
+            ::verifyClaim
+        )
 
     return Json.decodeFromString(sdClaimsParsed.toString())
 }
 
 /** @suppress */
-fun verifyJWTSignature(jwt: String, trustedIssuer: Map<String, String>, sdJwt: Boolean): JSONObject {
+fun verifySDJWT(jwt: String, trustedIssuer: Map<String, String>): JSONObject {
     val splits = jwt.split(".")
-    val header = JSONObject(b64Decode(splits[0]))
     val body = JSONObject(b64Decode(splits[1]))
 
-    if (header.getString("alg") == "none") {
-        return body
-    }
-
-    // Get JWK to verify the signature
-    val issuer = if (sdJwt && !body.isNull("iss")) {
+    val issuer = if (!body.isNull("iss")) {
         body.getString("iss")
-    } else if (!sdJwt) {
-        "holderKey"
     } else {
         throw Exception("Could not find issuer in JWT")
     }
@@ -314,36 +265,45 @@ fun verifyJWTSignature(jwt: String, trustedIssuer: Map<String, String>, sdJwt: B
         throw Exception("Could not find signing key to verify JWT")
     }
 
+    if (verifyJWTSignature(jwt, trustedIssuer[issuer]!!)) {
+        return body
+    } else {
+        throw Exception("Could not verify SDJWT")
+    }
+}
+
+/** @suppress */
+fun verifySDJWTR(jwt: String, holderPubKey: String?): JSONObject {
+    val splits = jwt.split(".")
+    val body = JSONObject(b64Decode(splits[1]))
+
+    if (holderPubKey.isNullOrEmpty() || verifyJWTSignature(jwt, holderPubKey)) {
+        return body
+    } else {
+        throw Exception("Could not verify SDJWT-Release")
+    }
+}
+
+/** @suppress */
+fun verifyJWTSignature(jwt: String, jwkStr: String): Boolean {
     // Create verifier object
-    val jwk = JWK.parse(trustedIssuer[issuer])
+    val jwk = JWK.parse(jwkStr)
     val verifier = when (jwk.keyType) {
         KeyType.OKP -> {
             Ed25519Verifier(jwk.toOctetKeyPair())
         }
+
         KeyType.RSA -> {
             RSASSAVerifier(jwk.toRSAKey())
         }
+
         else -> {
-            throw NotImplementedError("JWT signing algorithm not implemented")
+            return false
         }
     }
 
-    val jwtParsed = SignedJWT.parse(jwt)
     // Verify JWT
-    if(!jwtParsed.verify(verifier)) {
-        throw Exception("Invalid JWT signature")
-    }
-
-    return body
-}
-
-/** @suppress */
-fun getHolderBinding(sdJwt: JSONObject): Map<String, String>  {
-    return if (sdJwt.isNull("cnf")) {
-        mapOf()
-    } else {
-        mapOf("holderKey" to sdJwt.getJSONObject("cnf").toString())
-    }
+    return SignedJWT.parse(jwt).verify(verifier)
 }
 
 /** @suppress */
@@ -363,6 +323,48 @@ fun verifyJwtClaims(claims: JSONObject, expectedNonce: String? = null, expectedA
     if (!claims.isNull("exp") && !date.before(Date(claims.getLong("exp") * 1000))) {
         throw Exception("JWT is expired")
     }
+}
+
+/** @suppress */
+fun walkByStructure(structure: JSONArray, obj: JSONArray, fn: (s: Any?, o: Any?) -> Any): JSONArray {
+    val result = JSONArray()
+    var s = structure[0]
+    for (i in 0 until obj.length()) {
+        if (structure.length() > 1) {
+            s = structure[i]
+        }
+        if (s is JSONObject && obj[i] is JSONObject) {
+            val value = walkByStructure(s, obj.getJSONObject(i), fn)
+            result.put(value)
+        } else if (s is JSONArray && obj[i] is JSONArray) {
+            val value = walkByStructure(s, obj.getJSONArray(i), fn)
+            result.put(value)
+        } else {
+            val value = fn(s, obj[i])
+            result.put(value)
+        }
+    }
+    return result
+}
+
+/** @suppress */
+fun walkByStructure(structure: JSONObject, obj: JSONObject, fn: (s: Any?, o: Any?) -> Any): JSONObject {
+    val result = JSONObject()
+    for (key in structure.keys()) {
+        if (!obj.isNull(key)) {
+            if (structure[key] is JSONObject && obj[key] is JSONObject) {
+                val value = walkByStructure(structure.getJSONObject(key), obj.getJSONObject(key), fn)
+                result.put(key, value)
+            } else if (structure[key] is JSONArray && obj[key] is JSONArray) {
+                val value = walkByStructure(structure.getJSONArray(key), obj.getJSONArray(key), fn)
+                result.put(key, value)
+            } else {
+                val value = fn(structure[key], obj[key])
+                result.put(key, value)
+            }
+        }
+    }
+    return result
 }
 
 /** @suppress */
