@@ -91,7 +91,7 @@ internal class SdJwtKtTest {
         )
         println("Claims for credential1: $claims1\n")
 
-        val credential1 = createCredential(claims1, holderPublicKey, issuer, issuerKey, 0)
+        val credential1 = createCredential(claims1, holderPublicKey, issuer, issuerKey)
         println("Credential1: $credential1\n")
 
         println("====================================================")
@@ -130,9 +130,10 @@ internal class SdJwtKtTest {
             setOf("A", "B"),
             Address("123 Main St", "Anytown", "Anystate", "US", 123456)
         )
+        val discloseStructure = IdCredential(address = Address())
         println("Claims for credential1: $claims1\n")
 
-        val credential1 = createCredential(claims1, holderPublicKey, issuer, issuerKey, 1)
+        val credential1 = createCredential(claims1, holderPublicKey, issuer, issuerKey, discloseStructure)
         println("Credential1: $credential1\n")
 
         println("====================================================")

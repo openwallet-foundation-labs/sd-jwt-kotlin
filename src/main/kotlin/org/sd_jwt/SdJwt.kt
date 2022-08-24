@@ -32,32 +32,24 @@ fun createHash(value: String): String {
 }
 
 /** @suppress */
-fun buildSvcAndSdClaims(claims: JSONObject, depth: Int): Pair<JSONObject, JSONObject> {
-    val svcClaims = JSONObject()
-    val sdClaims = JSONObject()
-
+fun createSvcClaim(s: Any?, claim: Any): String {
     val secureRandom = SecureRandom()
+    // Generate salt
+    val randomness = ByteArray(16)
+    secureRandom.nextBytes(randomness)
+    val salt = b64Encoder(randomness)
 
-    for (key in claims.keys()) {
-        if (claims[key] is JSONObject && depth > 0) {
-            val (svcClaimsChild, sdClaimsChild) = buildSvcAndSdClaims(claims.getJSONObject(key), depth - 1)
-            svcClaims.put(key, svcClaimsChild)
-            sdClaims.put(key, sdClaimsChild)
-        } else {
-            // Generate salt
-            val randomness = ByteArray(16)
-            secureRandom.nextBytes(randomness)
-            val salt = b64Encoder(randomness)
+    // Encode salt and value together
+    return JSONArray().put(salt).put(claim).toString()
+}
 
-            // Encode salt and value together
-            val saltValueEncoded = JSONArray().put(salt).put(claims[key]).toString()
-            svcClaims.put(key, saltValueEncoded)
-
-            sdClaims.put(key, createHash(saltValueEncoded))
-        }
+/** @suppress */
+fun createDigest(s: Any?, claim: Any): String {
+    if (claim is String) {
+        return createHash(claim)
+    } else {
+        throw Exception("SVC value is not a hash. Can't create digest.")
     }
-
-    return Pair(svcClaims, sdClaims)
 }
 
 /**
@@ -76,14 +68,21 @@ inline fun <reified T> createCredential(
     holderPubKey: JWK?,
     issuer: String,
     issuerKey: JWK,
-    depth: Int = 0
+    discloseStructure: T? = null
 ): String {
     val format = Json { encodeDefaults = true }
     val jsonClaims = JSONObject(format.encodeToString(claims))
-    val (svcClaims, sdClaims) = buildSvcAndSdClaims(jsonClaims, depth)
+    val jsonDiscloseStructure = if (discloseStructure != null) {
+        JSONObject(format.encodeToString(discloseStructure))
+    } else {
+        JSONObject()
+    }
 
+    val svcClaims = walkByStructure(jsonDiscloseStructure, jsonClaims, ::createSvcClaim)
     val svc = JSONObject().put("sd_release", svcClaims)
     val svcEncoded = b64Encoder(svc.toString())
+
+    val sdDigest = walkByStructure(jsonDiscloseStructure, svcClaims, ::createDigest)
 
     val date = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
     val claimsSet = JSONObject()
@@ -91,7 +90,7 @@ inline fun <reified T> createCredential(
         .put("iat", date)
         .put("exp", date + 3600 * 24)
         .put("sd_hash_alg", "sha-256")
-        .put("sd_digests", sdClaims)
+        .put("sd_digests", sdDigest)
     if (holderPubKey != null) {
         claimsSet.put("cnf", holderPubKey.toJSONObject())
     }
@@ -102,12 +101,11 @@ inline fun <reified T> createCredential(
 }
 
 /** @suppress */
-fun chooseClaim(releaseClaim: Any?, svcValue: Any?): String {
+fun chooseClaim(releaseClaim: Any?, svcValue: Any): String? {
     if (releaseClaim != null && svcValue is String) {
         return svcValue
-    } else {
-        throw Exception("Release claims and SVC structure is different")
     }
+    return null
 }
 
 /**
@@ -188,7 +186,7 @@ fun buildJWT(claims: String, key: JWK?): String {
 }
 
 /** @suppress */
-fun verifyClaim(sdDigest: Any?, svc: Any?): Any {
+fun verifyClaim(sdDigest: Any?, svc: Any): Any {
     if (sdDigest is String && svc is String) {
         // Verify that the hash in the SD-JWT matches the one created from the SD-JWT Release
         if (createHash(svc) != sdDigest) {
@@ -268,7 +266,7 @@ fun verifySDJWT(jwt: String, trustedIssuer: Map<String, String>): JSONObject {
     if (verifyJWTSignature(jwt, trustedIssuer[issuer]!!)) {
         return body
     } else {
-        throw Exception("Could not verify SDJWT")
+        throw Exception("Could not verify SD-JWT")
     }
 }
 
@@ -280,7 +278,7 @@ fun verifySDJWTR(jwt: String, holderPubKey: String?): JSONObject {
     if (holderPubKey.isNullOrEmpty() || verifyJWTSignature(jwt, holderPubKey)) {
         return body
     } else {
-        throw Exception("Could not verify SDJWT-Release")
+        throw Exception("Could not verify SD-JWT-Release")
     }
 }
 
@@ -326,7 +324,7 @@ fun verifyJwtClaims(claims: JSONObject, expectedNonce: String? = null, expectedA
 }
 
 /** @suppress */
-fun walkByStructure(structure: JSONArray, obj: JSONArray, fn: (s: Any?, o: Any?) -> Any): JSONArray {
+fun walkByStructure(structure: JSONArray, obj: JSONArray, fn: (s: Any?, o: Any) -> Any?): JSONArray {
     val result = JSONArray()
     var s = structure[0]
     for (i in 0 until obj.length()) {
@@ -348,20 +346,18 @@ fun walkByStructure(structure: JSONArray, obj: JSONArray, fn: (s: Any?, o: Any?)
 }
 
 /** @suppress */
-fun walkByStructure(structure: JSONObject, obj: JSONObject, fn: (s: Any?, o: Any?) -> Any): JSONObject {
+fun walkByStructure(structure: JSONObject, obj: JSONObject, fn: (s: Any?, o: Any) -> Any?): JSONObject {
     val result = JSONObject()
-    for (key in structure.keys()) {
-        if (!obj.isNull(key)) {
-            if (structure[key] is JSONObject && obj[key] is JSONObject) {
-                val value = walkByStructure(structure.getJSONObject(key), obj.getJSONObject(key), fn)
-                result.put(key, value)
-            } else if (structure[key] is JSONArray && obj[key] is JSONArray) {
-                val value = walkByStructure(structure.getJSONArray(key), obj.getJSONArray(key), fn)
-                result.put(key, value)
-            } else {
-                val value = fn(structure[key], obj[key])
-                result.put(key, value)
-            }
+    for (key in obj.keys()) {
+        if (structure.opt(key) is JSONObject && obj[key] is JSONObject) {
+            val value = walkByStructure(structure.getJSONObject(key), obj.getJSONObject(key), fn)
+            result.put(key, value)
+        } else if (structure.opt(key) is JSONArray && obj[key] is JSONArray) {
+            val value = walkByStructure(structure.getJSONArray(key), obj.getJSONArray(key), fn)
+            result.put(key, value)
+        } else {
+            val value = fn(structure.opt(key), obj[key])
+            result.put(key, value)
         }
     }
     return result
