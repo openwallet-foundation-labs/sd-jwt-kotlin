@@ -134,7 +134,8 @@ internal class InterOpTest {
             Address("123 Main St", "Anytown", "Anystate", "US"),
             "1940-01-01"
         )
-        val credentialGen = createCredential(claims, holderPublicKey, issuer, issuerKey, 2)
+        val discloseStructure = SimpleCredential(address = Address())
+        val credentialGen = createCredential(claims, holderPublicKey, issuer, issuerKey, discloseStructure)
         println("Credential: $credentialGen")
 
         // Compare presentations
@@ -231,6 +232,40 @@ internal class InterOpTest {
         println("==========================================")
         println("============== Complex Test ==============")
         println("==========================================")
+        // Create credential
+        val claims = ComplexCredential(
+            verifiedClaims = VerifiedClaims(
+                verification = Verification(
+                    trustFramwork = "de_aml",
+                    time = "2012-04-23T18:25Z",
+                    verificationProcess = "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7",
+                    evidence = setOf(
+                        Evidence(
+                            type = "document",
+                            method = "pipp",
+                            time = "2012-04-22T11:30Z",
+                            document = Document(type = "idcard", issuer = Issuer(name = "Stadt Augsburg", country = "DE"), number = "53554554", dateOfIssuance = "2010-03-23", dataOfExpiry = "2020-03-22")
+                        )
+                    ),
+                ),
+                claims = Claims(
+                    givenName = "Max",
+                    familyName = "Meier",
+                    birthdate = "1956-01-28",
+                    placeOfBirth = PlaceOfBirth(country = "DE", locality = "Musterstadt"),
+                    nationality = setOf("DE"),
+                    address = AddressComplex(
+                        locality = "Maxstadt",
+                        postalCode = "12344",
+                        country = "DE",
+                        streetAddress = "An der Weide 22"
+                    )
+                )
+            ),
+            birthMiddleName = "Timotheus",
+            salutation = "Dr.",
+            msisdn = "49123456789"
+        )
 
         // Compare presentations
         val credential = "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxNTgxMCwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InZlcmlmaWVkX2NsYWltcyI6IHsidmVyaWZpY2F0aW9uIjogeyJ0cnVzdF9mcmFtZXdvcmsiOiAidzFtUDRvUGNfSjl0aEJleDBUYVFpMXZneEZtcnVRSnhaWUxGbmtORk1hSSIsICJ0aW1lIjogIlB1M2kwQ1dyUFZMSlctTFQzMHlGMWJGQlBQMTVCNi11S2szUG5HRGZsdjgiLCAidmVyaWZpY2F0aW9uX3Byb2Nlc3MiOiAiOEhxSVhSbWN6c2RZT1p6R2NMcUk1LWw5eE41UWJLMlhEdFhtZGZIN3otNCIsICJldmlkZW5jZSI6IFt7InR5cGUiOiAiVG5MdXFHR1FtNmpmZU9vYTV1WDFkaUtBTlVQdWgtekhycEJGZFg5TVItZyIsICJtZXRob2QiOiAiU2FnbWFrb1N1LVgtWFVQSUMzRWdkckVFd0lXeFJXWFg0LWk2OFg5VHlFbyIsICJ0aW1lIjogImxkMmM1b1lEUnRRY2ZVNlB6b2dQa3hfOTVXWXFocUlKTlZSTW5mY3NpY1kiLCAiZG9jdW1lbnQiOiB7InR5cGUiOiAidWZXakRhQWE1NE1uSGVqaTJaVVVIRGRucFo5eng2Q1VHNnVSMjhWTXRzUSIsICJpc3N1ZXIiOiB7Im5hbWUiOiAiYTRHTXVjVTdaYjA2MHIwU3ZkN2h1WTZRaG8xYklmM3YxVTVCdlBSOHE2WSIsICJjb3VudHJ5IjogIjEzNWs5TTBtMlNDbllSdU9mSHVZU2NZVlMycTNlZVk3SUl0Z3lSc2FCVDgifSwgIm51bWJlciI6ICJjVXZPeExVcDhSVjdUVFZsaUVpdS1UUUllbC1Mc0U4RS1YZlVnZnFrNWdrIiwgImRhdGVfb2ZfaXNzdWFuY2UiOiAiTklzOG9sSm5KT3Y0SjFxSUVCS3VUczJzRUZzNGZnR0poTnFNNnhkUXQ3RSIsICJkYXRlX29mX2V4cGlyeSI6ICJIVFIzN3ZMdEFOVDZNV2stOWRCcWVrRnBDdmFURzd6TmYxemU1NnJuVjY0In19XX0sICJjbGFpbXMiOiB7ImdpdmVuX25hbWUiOiAiTkI5WEhfeUpLcUtPaFhEbVhrWktwTUNrUmJPbU9UZDhicUpGWURKWVFuUSIsICJmYW1pbHlfbmFtZSI6ICJoQVViSjY2WllMOVZKTGJqc0RwbVNzMmU5RmZfT2hpbV9XUjRid1p5dm9RIiwgImJpcnRoZGF0ZSI6ICI2WE9SNGs1NkJnV2s1dG5OaXNtYm1FSHZvR1g3UlJmeTZaOEhFTmw5NmNVIiwgInBsYWNlX29mX2JpcnRoIjogeyJjb3VudHJ5IjogIkNMVGxodXkxM1dXYzNfSVNvbjFrRXlwRnd2Q21maExTcEdVTUN5QVVnNjgiLCAibG9jYWxpdHkiOiAiQVFvWDhpeEdwei1pcHdlRUdsQy0ydW1xd3lRZGhqSWVpVUJfVEtXY0UyRSJ9LCAibmF0aW9uYWxpdGllcyI6ICJuZm9jX19RS2xNVUhvZG14d2xZLUtwLTZld2dYM0NkSzdJYTBSSkhJWFZvIiwgImFkZHJlc3MiOiAibmduTzR1UWVPa3RNN1lkRkQ4eDgyZG9TN1dKbmxabnEtclFFX1JmdUJTSSJ9fSwgImJpcnRoX21pZGRsZV9uYW1lIjogIkZlRlN3ZDlkcnlwRVB0V1ZnSVo0Mk45al95b3N0dDFEczVQQnB4VDNSbmciLCAic2FsdXRhdGlvbiI6ICI1N0NNaHZBU1FNTnV6dVEwYV9CMV9WWDVYZEg3M1RjdVB4eVdHaW9yajVnIiwgIm1zaXNkbiI6ICJsZUtiQjBybzZxM2pyVnJhQ3F0NDQzdWFHWlZaaXNEM2lHckt1S0UybXFNIn19.3qCYGcV5PngUeKJkyQ_FSK44X6ziB4LASYz1G00NoYCSWsJ05Paqg7FGN_G1BdG-qSM1M39dtvjHEL5bgt02OzYpfpvY6ivWTXOWP9zBnitO00a3SqCh4-U06zGu4amx-Ma0s4Vj9tNItveiYHsDiwpwiL1DJCcIvG83i_dTMA2esHi256q9DiGuPLk9b4cPfkWMeOM_i7CakPi5s8F2mBUh0c0CZUkDDTctnN68OcWEcKvO7ReTNkGHZi7TpxqgmsHHgIGQwyDytFkkGTMgvlbpg4sIqwLUE3c910jpJ0JAiawUoKRF4H7NZ3PSg9rlj-QUHyGX5wIiJ3uy78Ng5A.eyJzZF9yZWxlYXNlIjogeyJ2ZXJpZmllZF9jbGFpbXMiOiB7InZlcmlmaWNhdGlvbiI6IHsidHJ1c3RfZnJhbWV3b3JrIjogIltcIjJHTEM0MnNLUXZlQ2ZHZnJ5TlJOOXdcIiwgXCJkZV9hbWxcIl0iLCAidGltZSI6ICJbXCJlbHVWNU9nM2dTTklJOEVZbnN4QV9BXCIsIFwiMjAxMi0wNC0yM1QxODoyNVpcIl0iLCAidmVyaWZpY2F0aW9uX3Byb2Nlc3MiOiAiW1wiNklqN3RNLWE1aVZQR2JvUzV0bXZWQVwiLCBcImYyNGM2Zi02ZDNmLTRlYzUtOTczZS1iMGQ4NTA2ZjNiYzdcIl0iLCAiZXZpZGVuY2UiOiBbeyJ0eXBlIjogIltcImVJOFpXbTlRbktQcE5QZU5lbkhkaFFcIiwgXCJkb2N1bWVudFwiXSIsICJtZXRob2QiOiAiW1wiUWdfTzY0enFBeGU0MTJhMTA4aXJvQVwiLCBcInBpcHBcIl0iLCAidGltZSI6ICJbXCJBSngtMDk1VlBycFR0TjRRTU9xUk9BXCIsIFwiMjAxMi0wNC0yMlQxMTozMFpcIl0iLCAiZG9jdW1lbnQiOiB7InR5cGUiOiAiW1wiUGMzM0pNMkxjaGNVX2xIZ2d2X3VmUVwiLCBcImlkY2FyZFwiXSIsICJpc3N1ZXIiOiB7Im5hbWUiOiAiW1wiRzAyTlNyUWZqRlhRN0lvMDlzeWFqQVwiLCBcIlN0YWR0IEF1Z3NidXJnXCJdIiwgImNvdW50cnkiOiAiW1wibGtseEY1ak1ZbEdUUFVvdk1OSXZDQVwiLCBcIkRFXCJdIn0sICJudW1iZXIiOiAiW1wiblB1b1Fua1JGcTNCSWVBbTdBblhGQVwiLCBcIjUzNTU0NTU0XCJdIiwgImRhdGVfb2ZfaXNzdWFuY2UiOiAiW1wiNWJQczFJcXVaTmEwaGthRnp6elpOd1wiLCBcIjIwMTAtMDMtMjNcIl0iLCAiZGF0ZV9vZl9leHBpcnkiOiAiW1wiNWEyVzBfTnJsRVp6ZnFta183UHEtd1wiLCBcIjIwMjAtMDMtMjJcIl0ifX1dfSwgImNsYWltcyI6IHsiZ2l2ZW5fbmFtZSI6ICJbXCJ5MXNWVTV3ZGZKYWhWZGd3UGdTN1JRXCIsIFwiTWF4XCJdIiwgImZhbWlseV9uYW1lIjogIltcIkhiUTRYOHNyVlczUUR4bklKZHF5T0FcIiwgXCJNZWllclwiXSIsICJiaXJ0aGRhdGUiOiAiW1wiQzlHU291anZpSnF1RWdZZm9qQ2IxQVwiLCBcIjE5NTYtMDEtMjhcIl0iLCAicGxhY2Vfb2ZfYmlydGgiOiB7ImNvdW50cnkiOiAiW1wia3g1a0YxN1YteDBKbXdVeDl2Z3Z0d1wiLCBcIkRFXCJdIiwgImxvY2FsaXR5IjogIltcIkgzbzF1c3dQNzYwRmkyeWVHZFZDRVFcIiwgXCJNdXN0ZXJzdGFkdFwiXSJ9LCAibmF0aW9uYWxpdGllcyI6ICJbXCJPQktsVFZsdkxnLUFkd3FZR2JQOFpBXCIsIFtcIkRFXCJdXSIsICJhZGRyZXNzIjogIltcIk0wSmI1N3Q0MXVicmtTdXlyRFQzeEFcIiwge1wibG9jYWxpdHlcIjogXCJNYXhzdGFkdFwiLCBcInBvc3RhbF9jb2RlXCI6IFwiMTIzNDRcIiwgXCJjb3VudHJ5XCI6IFwiREVcIiwgXCJzdHJlZXRfYWRkcmVzc1wiOiBcIkFuIGRlciBXZWlkZSAyMlwifV0ifX0sICJiaXJ0aF9taWRkbGVfbmFtZSI6ICJbXCJEc210S05ncFY0ZEFIcGpyY2Fvc0F3XCIsIFwiVGltb3RoZXVzXCJdIiwgInNhbHV0YXRpb24iOiAiW1wiZUs1bzVwSGZndXBQcGx0ajFxaEFKd1wiLCBcIkRyLlwiXSIsICJtc2lzZG4iOiAiW1wiajdBRGRiMFVWYjBMaTBjaVBjUDBld1wiLCBcIjQ5MTIzNDU2Nzg5XCJdIn19"
