@@ -48,7 +48,7 @@ fun createDigest(s: Any?, claim: Any): String {
     if (claim is String) {
         return createHash(claim)
     } else {
-        throw Exception("SVC value is not a hash. Can't create digest.")
+        throw Exception("SVC value is not a string. Can't create digest.")
     }
 }
 
