@@ -67,19 +67,13 @@ internal class InterOpTest {
         val birthdate: String? = null
     )
 
-    private fun splitPresentation(presentation: String): Pair<String, SignedJWT> {
-        val split = presentation.split(".")
-        val sdJwt = "${split[0]}.${split[1]}.${split[2]}"
-        val sdJwtR = "${split[3]}.${split[4]}.${split[5]}"
-        return Pair(sdJwt, SignedJWT.parse(sdJwtR))
-    }
-
     @Test
     internal fun simpleTest() {
-        println("=========================================")
-        println("============== Simple Test ==============")
-        println("=========================================")
-        // Create credential
+        val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Simple Test")
+        val expectedCredential =
+            "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxMjE1OSwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InN1YiI6ICJ6NHhnRWNvOTRkaVRhU3J1SVNQaUU3b193dG1jT2ZuSF84UjdYOVBhNTc4IiwgImdpdmVuX25hbWUiOiAiUHZVN2NXanVIVXE2dy1pOVhGcFFaaGpULXVwclFMM0dIM21Lc0FKbDBlMCIsICJmYW1pbHlfbmFtZSI6ICJILVJlbHI0Y0VCTWxlbnlLMWd2eXgxNlFWcG50NE1FY2xUNXRQMGFUTEZVIiwgImVtYWlsIjogIkVUMkExSlFMRjg1WnBCdWxoNlVGc3RHclNmUjRCM0tNLWJqUVZsbGh4cVkiLCAicGhvbmVfbnVtYmVyIjogIlNKbmNpQjJESVJWQTVjWEJyZEtvSDZuNDU3ODhtWnlVbjJybnY3NHVNVlUiLCAiYWRkcmVzcyI6ICIwRmxkcUxmR25FUlBQVkRDMTdvZDl4YjR3M2lSSlRFUWJXX1lrOUFtbkR3IiwgImJpcnRoZGF0ZSI6ICItTDBrTWdJYkxYZTNPRWtLVFVHd3pfUUtoamVoRGVvZktHd29QcnhMdW80In19.v_YCkMrzEtIip7z0fufeNVJmAfoiJSezvcvfBUtXMNGrNRLzQvRtFbj7qEKXAPD8QlJdh5SWVrubuKbn6sWQfH0SOj2pvUPYbziCZ1D8UmF29B9EjQVSbsphr2VoqyHZruQPI1RC-f5Dpj25WmvYLFoR76l3xRzqODeO08rkoGjkmHZseM5WVMdP0nIm5WR9Jc0Qv2W4-8vWgZV4b6fyrFf2TUbPwbSTmEWOYVayq5vMXnouPCpDPUjOPymybm6TL7Ub56MaHCc4kLcvyOJPeEebyvuO_uIV4YoUsbLsSVLKSqIaeB3QggL8O1ysZPN1B_geao0HsjJ1yZIG3Uc_OQ.eyJzZF9yZWxlYXNlIjogeyJzdWIiOiAiW1wiMkdMQzQyc0tRdmVDZkdmcnlOUk45d1wiLCBcIjZjNWMwYTQ5LWI1ODktNDMxZC1iYWU3LTIxOTEyMmE5ZWMyY1wiXSIsICJnaXZlbl9uYW1lIjogIltcImVsdVY1T2czZ1NOSUk4RVluc3hBX0FcIiwgXCJKb2huXCJdIiwgImZhbWlseV9uYW1lIjogIltcIjZJajd0TS1hNWlWUEdib1M1dG12VkFcIiwgXCJEb2VcIl0iLCAiZW1haWwiOiAiW1wiZUk4WldtOVFuS1BwTlBlTmVuSGRoUVwiLCBcImpvaG5kb2VAZXhhbXBsZS5jb21cIl0iLCAicGhvbmVfbnVtYmVyIjogIltcIlFnX082NHpxQXhlNDEyYTEwOGlyb0FcIiwgXCIrMS0yMDItNTU1LTAxMDFcIl0iLCAiYWRkcmVzcyI6ICJbXCJBSngtMDk1VlBycFR0TjRRTU9xUk9BXCIsIHtcInN0cmVldF9hZGRyZXNzXCI6IFwiMTIzIE1haW4gU3RcIiwgXCJsb2NhbGl0eVwiOiBcIkFueXRvd25cIiwgXCJyZWdpb25cIjogXCJBbnlzdGF0ZVwiLCBcImNvdW50cnlcIjogXCJVU1wifV0iLCAiYmlydGhkYXRlIjogIltcIlBjMzNKTTJMY2hjVV9sSGdndl91ZlFcIiwgXCIxOTQwLTAxLTAxXCJdIn19"
+        val expectedPresentation =
+            "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxMjE1OSwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InN1YiI6ICJ6NHhnRWNvOTRkaVRhU3J1SVNQaUU3b193dG1jT2ZuSF84UjdYOVBhNTc4IiwgImdpdmVuX25hbWUiOiAiUHZVN2NXanVIVXE2dy1pOVhGcFFaaGpULXVwclFMM0dIM21Lc0FKbDBlMCIsICJmYW1pbHlfbmFtZSI6ICJILVJlbHI0Y0VCTWxlbnlLMWd2eXgxNlFWcG50NE1FY2xUNXRQMGFUTEZVIiwgImVtYWlsIjogIkVUMkExSlFMRjg1WnBCdWxoNlVGc3RHclNmUjRCM0tNLWJqUVZsbGh4cVkiLCAicGhvbmVfbnVtYmVyIjogIlNKbmNpQjJESVJWQTVjWEJyZEtvSDZuNDU3ODhtWnlVbjJybnY3NHVNVlUiLCAiYWRkcmVzcyI6ICIwRmxkcUxmR25FUlBQVkRDMTdvZDl4YjR3M2lSSlRFUWJXX1lrOUFtbkR3IiwgImJpcnRoZGF0ZSI6ICItTDBrTWdJYkxYZTNPRWtLVFVHd3pfUUtoamVoRGVvZktHd29QcnhMdW80In19.v_YCkMrzEtIip7z0fufeNVJmAfoiJSezvcvfBUtXMNGrNRLzQvRtFbj7qEKXAPD8QlJdh5SWVrubuKbn6sWQfH0SOj2pvUPYbziCZ1D8UmF29B9EjQVSbsphr2VoqyHZruQPI1RC-f5Dpj25WmvYLFoR76l3xRzqODeO08rkoGjkmHZseM5WVMdP0nIm5WR9Jc0Qv2W4-8vWgZV4b6fyrFf2TUbPwbSTmEWOYVayq5vMXnouPCpDPUjOPymybm6TL7Ub56MaHCc4kLcvyOJPeEebyvuO_uIV4YoUsbLsSVLKSqIaeB3QggL8O1ysZPN1B_geao0HsjJ1yZIG3Uc_OQ.eyJhbGciOiAiUlMyNTYiLCAia2lkIjogIkxkeVRYd0F5ZnJpcjRfVjZORzFSYzEwVThKZExZVHJFQktKaF9oNWlfclUifQ.eyJub25jZSI6ICJ5b3hDaURtNXNWUC1PVE5ZdGFfRERnIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgInNkX3JlbGVhc2UiOiB7ImdpdmVuX25hbWUiOiAiW1wiZWx1VjVPZzNnU05JSThFWW5zeEFfQVwiLCBcIkpvaG5cIl0iLCAiZmFtaWx5X25hbWUiOiAiW1wiNklqN3RNLWE1aVZQR2JvUzV0bXZWQVwiLCBcIkRvZVwiXSIsICJhZGRyZXNzIjogIltcIkFKeC0wOTVWUHJwVHRONFFNT3FST0FcIiwge1wic3RyZWV0X2FkZHJlc3NcIjogXCIxMjMgTWFpbiBTdFwiLCBcImxvY2FsaXR5XCI6IFwiQW55dG93blwiLCBcInJlZ2lvblwiOiBcIkFueXN0YXRlXCIsIFwiY291bnRyeVwiOiBcIlVTXCJ9XSJ9fQ.bDLWxvCQeuW51lQUbWdRkLsVCvokvMaUwvDow1jL-nchuk1MYBDezcIPtpDqWWKnlSi9HWWOT8vKLWUfej3uZJNU825sVQwTMgp8rqvGAdfGEEdmP1FrsVt9f3-nXloCBAlCS3O1klyxXPQBmX-M2wB0oGfQczTC8cA4xU3McWpK1qgHZCS8i7t2XalNoxKfJy1dQrGvDBNwt52TDeyLG8fzdOEjT9O3L0AX91UumCGZGc8FuVIu5ibEPvLTxiLfr4L6du79V_kTXDprOsOWue_ohqt91PQnVGOXidyZWXpd9IT3IRE0PZFzW3MmwtxS6uvIGUSw2x5iMyiEwhhXLQ"
         val claims = SimpleCredential(
             "6c5c0a49-b589-431d-bae7-219122a9ec2c",
             "John",
@@ -89,42 +83,24 @@ internal class InterOpTest {
             Address("123 Main St", "Anytown", "Anystate", "US"),
             "1940-01-01"
         )
-        val credentialGen = createCredential(claims, holderPublicKey, issuer, issuerKey)
-        println("Credential: $credentialGen")
-
-        // Compare presentations
-        val credential = "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxMjE1OSwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InN1YiI6ICJ6NHhnRWNvOTRkaVRhU3J1SVNQaUU3b193dG1jT2ZuSF84UjdYOVBhNTc4IiwgImdpdmVuX25hbWUiOiAiUHZVN2NXanVIVXE2dy1pOVhGcFFaaGpULXVwclFMM0dIM21Lc0FKbDBlMCIsICJmYW1pbHlfbmFtZSI6ICJILVJlbHI0Y0VCTWxlbnlLMWd2eXgxNlFWcG50NE1FY2xUNXRQMGFUTEZVIiwgImVtYWlsIjogIkVUMkExSlFMRjg1WnBCdWxoNlVGc3RHclNmUjRCM0tNLWJqUVZsbGh4cVkiLCAicGhvbmVfbnVtYmVyIjogIlNKbmNpQjJESVJWQTVjWEJyZEtvSDZuNDU3ODhtWnlVbjJybnY3NHVNVlUiLCAiYWRkcmVzcyI6ICIwRmxkcUxmR25FUlBQVkRDMTdvZDl4YjR3M2lSSlRFUWJXX1lrOUFtbkR3IiwgImJpcnRoZGF0ZSI6ICItTDBrTWdJYkxYZTNPRWtLVFVHd3pfUUtoamVoRGVvZktHd29QcnhMdW80In19.v_YCkMrzEtIip7z0fufeNVJmAfoiJSezvcvfBUtXMNGrNRLzQvRtFbj7qEKXAPD8QlJdh5SWVrubuKbn6sWQfH0SOj2pvUPYbziCZ1D8UmF29B9EjQVSbsphr2VoqyHZruQPI1RC-f5Dpj25WmvYLFoR76l3xRzqODeO08rkoGjkmHZseM5WVMdP0nIm5WR9Jc0Qv2W4-8vWgZV4b6fyrFf2TUbPwbSTmEWOYVayq5vMXnouPCpDPUjOPymybm6TL7Ub56MaHCc4kLcvyOJPeEebyvuO_uIV4YoUsbLsSVLKSqIaeB3QggL8O1ysZPN1B_geao0HsjJ1yZIG3Uc_OQ.eyJzZF9yZWxlYXNlIjogeyJzdWIiOiAiW1wiMkdMQzQyc0tRdmVDZkdmcnlOUk45d1wiLCBcIjZjNWMwYTQ5LWI1ODktNDMxZC1iYWU3LTIxOTEyMmE5ZWMyY1wiXSIsICJnaXZlbl9uYW1lIjogIltcImVsdVY1T2czZ1NOSUk4RVluc3hBX0FcIiwgXCJKb2huXCJdIiwgImZhbWlseV9uYW1lIjogIltcIjZJajd0TS1hNWlWUEdib1M1dG12VkFcIiwgXCJEb2VcIl0iLCAiZW1haWwiOiAiW1wiZUk4WldtOVFuS1BwTlBlTmVuSGRoUVwiLCBcImpvaG5kb2VAZXhhbXBsZS5jb21cIl0iLCAicGhvbmVfbnVtYmVyIjogIltcIlFnX082NHpxQXhlNDEyYTEwOGlyb0FcIiwgXCIrMS0yMDItNTU1LTAxMDFcIl0iLCAiYWRkcmVzcyI6ICJbXCJBSngtMDk1VlBycFR0TjRRTU9xUk9BXCIsIHtcInN0cmVldF9hZGRyZXNzXCI6IFwiMTIzIE1haW4gU3RcIiwgXCJsb2NhbGl0eVwiOiBcIkFueXRvd25cIiwgXCJyZWdpb25cIjogXCJBbnlzdGF0ZVwiLCBcImNvdW50cnlcIjogXCJVU1wifV0iLCAiYmlydGhkYXRlIjogIltcIlBjMzNKTTJMY2hjVV9sSGdndl91ZlFcIiwgXCIxOTQwLTAxLTAxXCJdIn19"
-        val presentation = "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxMjE1OSwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InN1YiI6ICJ6NHhnRWNvOTRkaVRhU3J1SVNQaUU3b193dG1jT2ZuSF84UjdYOVBhNTc4IiwgImdpdmVuX25hbWUiOiAiUHZVN2NXanVIVXE2dy1pOVhGcFFaaGpULXVwclFMM0dIM21Lc0FKbDBlMCIsICJmYW1pbHlfbmFtZSI6ICJILVJlbHI0Y0VCTWxlbnlLMWd2eXgxNlFWcG50NE1FY2xUNXRQMGFUTEZVIiwgImVtYWlsIjogIkVUMkExSlFMRjg1WnBCdWxoNlVGc3RHclNmUjRCM0tNLWJqUVZsbGh4cVkiLCAicGhvbmVfbnVtYmVyIjogIlNKbmNpQjJESVJWQTVjWEJyZEtvSDZuNDU3ODhtWnlVbjJybnY3NHVNVlUiLCAiYWRkcmVzcyI6ICIwRmxkcUxmR25FUlBQVkRDMTdvZDl4YjR3M2lSSlRFUWJXX1lrOUFtbkR3IiwgImJpcnRoZGF0ZSI6ICItTDBrTWdJYkxYZTNPRWtLVFVHd3pfUUtoamVoRGVvZktHd29QcnhMdW80In19.v_YCkMrzEtIip7z0fufeNVJmAfoiJSezvcvfBUtXMNGrNRLzQvRtFbj7qEKXAPD8QlJdh5SWVrubuKbn6sWQfH0SOj2pvUPYbziCZ1D8UmF29B9EjQVSbsphr2VoqyHZruQPI1RC-f5Dpj25WmvYLFoR76l3xRzqODeO08rkoGjkmHZseM5WVMdP0nIm5WR9Jc0Qv2W4-8vWgZV4b6fyrFf2TUbPwbSTmEWOYVayq5vMXnouPCpDPUjOPymybm6TL7Ub56MaHCc4kLcvyOJPeEebyvuO_uIV4YoUsbLsSVLKSqIaeB3QggL8O1ysZPN1B_geao0HsjJ1yZIG3Uc_OQ.eyJhbGciOiAiUlMyNTYiLCAia2lkIjogIkxkeVRYd0F5ZnJpcjRfVjZORzFSYzEwVThKZExZVHJFQktKaF9oNWlfclUifQ.eyJub25jZSI6ICJ5b3hDaURtNXNWUC1PVE5ZdGFfRERnIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgInNkX3JlbGVhc2UiOiB7ImdpdmVuX25hbWUiOiAiW1wiZWx1VjVPZzNnU05JSThFWW5zeEFfQVwiLCBcIkpvaG5cIl0iLCAiZmFtaWx5X25hbWUiOiAiW1wiNklqN3RNLWE1aVZQR2JvUzV0bXZWQVwiLCBcIkRvZVwiXSIsICJhZGRyZXNzIjogIltcIkFKeC0wOTVWUHJwVHRONFFNT3FST0FcIiwge1wic3RyZWV0X2FkZHJlc3NcIjogXCIxMjMgTWFpbiBTdFwiLCBcImxvY2FsaXR5XCI6IFwiQW55dG93blwiLCBcInJlZ2lvblwiOiBcIkFueXN0YXRlXCIsIFwiY291bnRyeVwiOiBcIlVTXCJ9XSJ9fQ.bDLWxvCQeuW51lQUbWdRkLsVCvokvMaUwvDow1jL-nchuk1MYBDezcIPtpDqWWKnlSi9HWWOT8vKLWUfej3uZJNU825sVQwTMgp8rqvGAdfGEEdmP1FrsVt9f3-nXloCBAlCS3O1klyxXPQBmX-M2wB0oGfQczTC8cA4xU3McWpK1qgHZCS8i7t2XalNoxKfJy1dQrGvDBNwt52TDeyLG8fzdOEjT9O3L0AX91UumCGZGc8FuVIu5ibEPvLTxiLfr4L6du79V_kTXDprOsOWue_ohqt91PQnVGOXidyZWXpd9IT3IRE0PZFzW3MmwtxS6uvIGUSw2x5iMyiEwhhXLQ"
-
         val releaseClaims = SimpleCredential(givenName = "", familyName = "", address = Address())
-        val presentationGen = createPresentation(credential, releaseClaims, verifier, nonce, holderKey)
-
-        println("Presentation: $presentationGen")
-
-        val (sdJwtGen, sdJwtRGen) = splitPresentation(presentationGen)
-        val (sdJwt, sdJwtR) = splitPresentation(presentation)
-        assertEquals(sdJwt, sdJwtGen)
-        assertEquals(sdJwtR.jwtClaimsSet, sdJwtRGen.jwtClaimsSet)
-
-        // Verify
-        val verifiedSimpleCredential = verifyPresentation<SimpleCredential>(presentation, trustedIssuers, nonce, verifier)
-
-        println("Verified credential: $verifiedSimpleCredential")
-
-        val simpleCredential = SimpleCredential(
+        val expectedClaims = SimpleCredential(
             givenName = "John",
             familyName = "Doe",
             address = Address(streetAddress = "123 Main St", locality = "Anytown", region = "Anystate", country = "US")
         )
-        assertEquals(simpleCredential, verifiedSimpleCredential)
+
+        testRoutine(expectedCredential, expectedPresentation, expectedClaims, claims, null, releaseClaims, testConfig)
     }
 
     @Test
     internal fun simpleStructuredTest() {
-        println("==========================================")
-        println("========= Simple Structured Test =========")
-        println("==========================================")
-        // Create credential
+        val testConfig =
+            TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Simple Structured Test")
+        val expectedCredential =
+            "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxNTI3MSwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InN1YiI6ICJ6NHhnRWNvOTRkaVRhU3J1SVNQaUU3b193dG1jT2ZuSF84UjdYOVBhNTc4IiwgImdpdmVuX25hbWUiOiAiUHZVN2NXanVIVXE2dy1pOVhGcFFaaGpULXVwclFMM0dIM21Lc0FKbDBlMCIsICJmYW1pbHlfbmFtZSI6ICJILVJlbHI0Y0VCTWxlbnlLMWd2eXgxNlFWcG50NE1FY2xUNXRQMGFUTEZVIiwgImVtYWlsIjogIkVUMkExSlFMRjg1WnBCdWxoNlVGc3RHclNmUjRCM0tNLWJqUVZsbGh4cVkiLCAicGhvbmVfbnVtYmVyIjogIlNKbmNpQjJESVJWQTVjWEJyZEtvSDZuNDU3ODhtWnlVbjJybnY3NHVNVlUiLCAiYWRkcmVzcyI6IHsic3RyZWV0X2FkZHJlc3MiOiAiTzdfSXNkNkNtWnFjU29iUFZwTWdtSndCNDFoUFVISEc4amc1TEo4WXpmWSIsICJsb2NhbGl0eSI6ICJ3LXpURjZsamtRTFR2VnlwX0pOeUQzdDVXYWotQjJ2YjBBWEgxcThPc2pJIiwgInJlZ2lvbiI6ICJuVHZvS3BHQTZZUXdFWmlwVkJJTTRXVkg5S1dFbndpcXNSakVocnhoUXo0IiwgImNvdW50cnkiOiAidS1PMXlEUXFEVFRxT2dVQlNqV2lsZ2tNTHpnX1FPVEVMTWZaclJUNWU2ayJ9LCAiYmlydGhkYXRlIjogIlRpcHlveEQ0M1BaSkY4WkVtS1ByYnhNRWxwRlhfTTdhQkxrVXBDLVc1M28ifX0.2BvyPIKjifFJIRWKuF_9U8PuWQDWMuQjjYMGYaWcbKMb887ZjraVkIMd-Nf8SKdNDIEJwpKgpFtIy2uc_si83dI2b2MP3Hxw8tz6rC7tzjjZvZYd9975bkT1445QPPKB9T_Vf2nkWgvy2GinaF1_BCdo_0REURGtKqNTw8LHhPeYIFr7JHa3i-SXOd7CgxA_9FNyjsgdanwH1thLGVRBK5nmag0N36ZmSBnCnp9fY4lUQzNBPfmEmhMNIrh329wpbB1T4WiHChE1wbKk_HQr9Yk6bENy6-ZOdNkNMufDzyUPPd6JBwLxZ2TUC5bJPIaIR5tR3tY8rutTpkIa5fDO3w.eyJzZF9yZWxlYXNlIjogeyJzdWIiOiAiW1wiMkdMQzQyc0tRdmVDZkdmcnlOUk45d1wiLCBcIjZjNWMwYTQ5LWI1ODktNDMxZC1iYWU3LTIxOTEyMmE5ZWMyY1wiXSIsICJnaXZlbl9uYW1lIjogIltcImVsdVY1T2czZ1NOSUk4RVluc3hBX0FcIiwgXCJKb2huXCJdIiwgImZhbWlseV9uYW1lIjogIltcIjZJajd0TS1hNWlWUEdib1M1dG12VkFcIiwgXCJEb2VcIl0iLCAiZW1haWwiOiAiW1wiZUk4WldtOVFuS1BwTlBlTmVuSGRoUVwiLCBcImpvaG5kb2VAZXhhbXBsZS5jb21cIl0iLCAicGhvbmVfbnVtYmVyIjogIltcIlFnX082NHpxQXhlNDEyYTEwOGlyb0FcIiwgXCIrMS0yMDItNTU1LTAxMDFcIl0iLCAiYWRkcmVzcyI6IHsic3RyZWV0X2FkZHJlc3MiOiAiW1wiQUp4LTA5NVZQcnBUdE40UU1PcVJPQVwiLCBcIjEyMyBNYWluIFN0XCJdIiwgImxvY2FsaXR5IjogIltcIlBjMzNKTTJMY2hjVV9sSGdndl91ZlFcIiwgXCJBbnl0b3duXCJdIiwgInJlZ2lvbiI6ICJbXCJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBXCIsIFwiQW55c3RhdGVcIl0iLCAiY291bnRyeSI6ICJbXCJsa2x4RjVqTVlsR1RQVW92TU5JdkNBXCIsIFwiVVNcIl0ifSwgImJpcnRoZGF0ZSI6ICJbXCJuUHVvUW5rUkZxM0JJZUFtN0FuWEZBXCIsIFwiMTk0MC0wMS0wMVwiXSJ9fQ"
+        val expectedPresentation =
+            "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxNTI3MSwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InN1YiI6ICJ6NHhnRWNvOTRkaVRhU3J1SVNQaUU3b193dG1jT2ZuSF84UjdYOVBhNTc4IiwgImdpdmVuX25hbWUiOiAiUHZVN2NXanVIVXE2dy1pOVhGcFFaaGpULXVwclFMM0dIM21Lc0FKbDBlMCIsICJmYW1pbHlfbmFtZSI6ICJILVJlbHI0Y0VCTWxlbnlLMWd2eXgxNlFWcG50NE1FY2xUNXRQMGFUTEZVIiwgImVtYWlsIjogIkVUMkExSlFMRjg1WnBCdWxoNlVGc3RHclNmUjRCM0tNLWJqUVZsbGh4cVkiLCAicGhvbmVfbnVtYmVyIjogIlNKbmNpQjJESVJWQTVjWEJyZEtvSDZuNDU3ODhtWnlVbjJybnY3NHVNVlUiLCAiYWRkcmVzcyI6IHsic3RyZWV0X2FkZHJlc3MiOiAiTzdfSXNkNkNtWnFjU29iUFZwTWdtSndCNDFoUFVISEc4amc1TEo4WXpmWSIsICJsb2NhbGl0eSI6ICJ3LXpURjZsamtRTFR2VnlwX0pOeUQzdDVXYWotQjJ2YjBBWEgxcThPc2pJIiwgInJlZ2lvbiI6ICJuVHZvS3BHQTZZUXdFWmlwVkJJTTRXVkg5S1dFbndpcXNSakVocnhoUXo0IiwgImNvdW50cnkiOiAidS1PMXlEUXFEVFRxT2dVQlNqV2lsZ2tNTHpnX1FPVEVMTWZaclJUNWU2ayJ9LCAiYmlydGhkYXRlIjogIlRpcHlveEQ0M1BaSkY4WkVtS1ByYnhNRWxwRlhfTTdhQkxrVXBDLVc1M28ifX0.2BvyPIKjifFJIRWKuF_9U8PuWQDWMuQjjYMGYaWcbKMb887ZjraVkIMd-Nf8SKdNDIEJwpKgpFtIy2uc_si83dI2b2MP3Hxw8tz6rC7tzjjZvZYd9975bkT1445QPPKB9T_Vf2nkWgvy2GinaF1_BCdo_0REURGtKqNTw8LHhPeYIFr7JHa3i-SXOd7CgxA_9FNyjsgdanwH1thLGVRBK5nmag0N36ZmSBnCnp9fY4lUQzNBPfmEmhMNIrh329wpbB1T4WiHChE1wbKk_HQr9Yk6bENy6-ZOdNkNMufDzyUPPd6JBwLxZ2TUC5bJPIaIR5tR3tY8rutTpkIa5fDO3w.eyJhbGciOiAiUlMyNTYiLCAia2lkIjogIkxkeVRYd0F5ZnJpcjRfVjZORzFSYzEwVThKZExZVHJFQktKaF9oNWlfclUifQ.eyJub25jZSI6ICJ5b3hDaURtNXNWUC1PVE5ZdGFfRERnIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgInNkX3JlbGVhc2UiOiB7ImdpdmVuX25hbWUiOiAiW1wiZWx1VjVPZzNnU05JSThFWW5zeEFfQVwiLCBcIkpvaG5cIl0iLCAiZmFtaWx5X25hbWUiOiAiW1wiNklqN3RNLWE1aVZQR2JvUzV0bXZWQVwiLCBcIkRvZVwiXSIsICJiaXJ0aGRhdGUiOiAiW1wiblB1b1Fua1JGcTNCSWVBbTdBblhGQVwiLCBcIjE5NDAtMDEtMDFcIl0iLCAiYWRkcmVzcyI6IHsicmVnaW9uIjogIltcIkcwMk5TclFmakZYUTdJbzA5c3lhakFcIiwgXCJBbnlzdGF0ZVwiXSIsICJjb3VudHJ5IjogIltcImxrbHhGNWpNWWxHVFBVb3ZNTkl2Q0FcIiwgXCJVU1wiXSJ9fX0.KKjTUmWQGQl2WsdyFTacR063cvccnZ3IwO_3xOCbBT1-yD3EZvXBjOPi4-QAu1798dU99uLtEShI8A9wZdS-01-szsK8wrbKghNeJobkFeIYdo4eBGATFUOy9HG_m_fudGXVzrlEkYjWQAh0oA47tnDKBhlvb-Wgpylt3L5ABMTMyUABhdsJhTPIGoDUfk2VFvUixvH6NuppJTZazLCqR196tnI0LDL51W-e-RHVS_MAEIeex5TbLZxKFmdyyT49FnocvKM1lXGtBS6Yc73vNAiQ-GEmN0PUZaOzsnVlwJA6xVbwzjBlw4BDzvpJ3NEBik_iI4RAiwCOA-FnReokEw"
         val claims = SimpleCredential(
             "6c5c0a49-b589-431d-bae7-219122a9ec2c",
             "John",
@@ -135,35 +111,28 @@ internal class InterOpTest {
             "1940-01-01"
         )
         val discloseStructure = SimpleCredential(address = Address())
-        val credentialGen = createCredential(claims, holderPublicKey, issuer, issuerKey, discloseStructure)
-        println("Credential: $credentialGen")
-
-        // Compare presentations
-        val credential = "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxNTI3MSwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InN1YiI6ICJ6NHhnRWNvOTRkaVRhU3J1SVNQaUU3b193dG1jT2ZuSF84UjdYOVBhNTc4IiwgImdpdmVuX25hbWUiOiAiUHZVN2NXanVIVXE2dy1pOVhGcFFaaGpULXVwclFMM0dIM21Lc0FKbDBlMCIsICJmYW1pbHlfbmFtZSI6ICJILVJlbHI0Y0VCTWxlbnlLMWd2eXgxNlFWcG50NE1FY2xUNXRQMGFUTEZVIiwgImVtYWlsIjogIkVUMkExSlFMRjg1WnBCdWxoNlVGc3RHclNmUjRCM0tNLWJqUVZsbGh4cVkiLCAicGhvbmVfbnVtYmVyIjogIlNKbmNpQjJESVJWQTVjWEJyZEtvSDZuNDU3ODhtWnlVbjJybnY3NHVNVlUiLCAiYWRkcmVzcyI6IHsic3RyZWV0X2FkZHJlc3MiOiAiTzdfSXNkNkNtWnFjU29iUFZwTWdtSndCNDFoUFVISEc4amc1TEo4WXpmWSIsICJsb2NhbGl0eSI6ICJ3LXpURjZsamtRTFR2VnlwX0pOeUQzdDVXYWotQjJ2YjBBWEgxcThPc2pJIiwgInJlZ2lvbiI6ICJuVHZvS3BHQTZZUXdFWmlwVkJJTTRXVkg5S1dFbndpcXNSakVocnhoUXo0IiwgImNvdW50cnkiOiAidS1PMXlEUXFEVFRxT2dVQlNqV2lsZ2tNTHpnX1FPVEVMTWZaclJUNWU2ayJ9LCAiYmlydGhkYXRlIjogIlRpcHlveEQ0M1BaSkY4WkVtS1ByYnhNRWxwRlhfTTdhQkxrVXBDLVc1M28ifX0.2BvyPIKjifFJIRWKuF_9U8PuWQDWMuQjjYMGYaWcbKMb887ZjraVkIMd-Nf8SKdNDIEJwpKgpFtIy2uc_si83dI2b2MP3Hxw8tz6rC7tzjjZvZYd9975bkT1445QPPKB9T_Vf2nkWgvy2GinaF1_BCdo_0REURGtKqNTw8LHhPeYIFr7JHa3i-SXOd7CgxA_9FNyjsgdanwH1thLGVRBK5nmag0N36ZmSBnCnp9fY4lUQzNBPfmEmhMNIrh329wpbB1T4WiHChE1wbKk_HQr9Yk6bENy6-ZOdNkNMufDzyUPPd6JBwLxZ2TUC5bJPIaIR5tR3tY8rutTpkIa5fDO3w.eyJzZF9yZWxlYXNlIjogeyJzdWIiOiAiW1wiMkdMQzQyc0tRdmVDZkdmcnlOUk45d1wiLCBcIjZjNWMwYTQ5LWI1ODktNDMxZC1iYWU3LTIxOTEyMmE5ZWMyY1wiXSIsICJnaXZlbl9uYW1lIjogIltcImVsdVY1T2czZ1NOSUk4RVluc3hBX0FcIiwgXCJKb2huXCJdIiwgImZhbWlseV9uYW1lIjogIltcIjZJajd0TS1hNWlWUEdib1M1dG12VkFcIiwgXCJEb2VcIl0iLCAiZW1haWwiOiAiW1wiZUk4WldtOVFuS1BwTlBlTmVuSGRoUVwiLCBcImpvaG5kb2VAZXhhbXBsZS5jb21cIl0iLCAicGhvbmVfbnVtYmVyIjogIltcIlFnX082NHpxQXhlNDEyYTEwOGlyb0FcIiwgXCIrMS0yMDItNTU1LTAxMDFcIl0iLCAiYWRkcmVzcyI6IHsic3RyZWV0X2FkZHJlc3MiOiAiW1wiQUp4LTA5NVZQcnBUdE40UU1PcVJPQVwiLCBcIjEyMyBNYWluIFN0XCJdIiwgImxvY2FsaXR5IjogIltcIlBjMzNKTTJMY2hjVV9sSGdndl91ZlFcIiwgXCJBbnl0b3duXCJdIiwgInJlZ2lvbiI6ICJbXCJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBXCIsIFwiQW55c3RhdGVcIl0iLCAiY291bnRyeSI6ICJbXCJsa2x4RjVqTVlsR1RQVW92TU5JdkNBXCIsIFwiVVNcIl0ifSwgImJpcnRoZGF0ZSI6ICJbXCJuUHVvUW5rUkZxM0JJZUFtN0FuWEZBXCIsIFwiMTk0MC0wMS0wMVwiXSJ9fQ"
-        val presentation = "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxNTI3MSwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InN1YiI6ICJ6NHhnRWNvOTRkaVRhU3J1SVNQaUU3b193dG1jT2ZuSF84UjdYOVBhNTc4IiwgImdpdmVuX25hbWUiOiAiUHZVN2NXanVIVXE2dy1pOVhGcFFaaGpULXVwclFMM0dIM21Lc0FKbDBlMCIsICJmYW1pbHlfbmFtZSI6ICJILVJlbHI0Y0VCTWxlbnlLMWd2eXgxNlFWcG50NE1FY2xUNXRQMGFUTEZVIiwgImVtYWlsIjogIkVUMkExSlFMRjg1WnBCdWxoNlVGc3RHclNmUjRCM0tNLWJqUVZsbGh4cVkiLCAicGhvbmVfbnVtYmVyIjogIlNKbmNpQjJESVJWQTVjWEJyZEtvSDZuNDU3ODhtWnlVbjJybnY3NHVNVlUiLCAiYWRkcmVzcyI6IHsic3RyZWV0X2FkZHJlc3MiOiAiTzdfSXNkNkNtWnFjU29iUFZwTWdtSndCNDFoUFVISEc4amc1TEo4WXpmWSIsICJsb2NhbGl0eSI6ICJ3LXpURjZsamtRTFR2VnlwX0pOeUQzdDVXYWotQjJ2YjBBWEgxcThPc2pJIiwgInJlZ2lvbiI6ICJuVHZvS3BHQTZZUXdFWmlwVkJJTTRXVkg5S1dFbndpcXNSakVocnhoUXo0IiwgImNvdW50cnkiOiAidS1PMXlEUXFEVFRxT2dVQlNqV2lsZ2tNTHpnX1FPVEVMTWZaclJUNWU2ayJ9LCAiYmlydGhkYXRlIjogIlRpcHlveEQ0M1BaSkY4WkVtS1ByYnhNRWxwRlhfTTdhQkxrVXBDLVc1M28ifX0.2BvyPIKjifFJIRWKuF_9U8PuWQDWMuQjjYMGYaWcbKMb887ZjraVkIMd-Nf8SKdNDIEJwpKgpFtIy2uc_si83dI2b2MP3Hxw8tz6rC7tzjjZvZYd9975bkT1445QPPKB9T_Vf2nkWgvy2GinaF1_BCdo_0REURGtKqNTw8LHhPeYIFr7JHa3i-SXOd7CgxA_9FNyjsgdanwH1thLGVRBK5nmag0N36ZmSBnCnp9fY4lUQzNBPfmEmhMNIrh329wpbB1T4WiHChE1wbKk_HQr9Yk6bENy6-ZOdNkNMufDzyUPPd6JBwLxZ2TUC5bJPIaIR5tR3tY8rutTpkIa5fDO3w.eyJhbGciOiAiUlMyNTYiLCAia2lkIjogIkxkeVRYd0F5ZnJpcjRfVjZORzFSYzEwVThKZExZVHJFQktKaF9oNWlfclUifQ.eyJub25jZSI6ICJ5b3hDaURtNXNWUC1PVE5ZdGFfRERnIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgInNkX3JlbGVhc2UiOiB7ImdpdmVuX25hbWUiOiAiW1wiZWx1VjVPZzNnU05JSThFWW5zeEFfQVwiLCBcIkpvaG5cIl0iLCAiZmFtaWx5X25hbWUiOiAiW1wiNklqN3RNLWE1aVZQR2JvUzV0bXZWQVwiLCBcIkRvZVwiXSIsICJiaXJ0aGRhdGUiOiAiW1wiblB1b1Fua1JGcTNCSWVBbTdBblhGQVwiLCBcIjE5NDAtMDEtMDFcIl0iLCAiYWRkcmVzcyI6IHsicmVnaW9uIjogIltcIkcwMk5TclFmakZYUTdJbzA5c3lhakFcIiwgXCJBbnlzdGF0ZVwiXSIsICJjb3VudHJ5IjogIltcImxrbHhGNWpNWWxHVFBVb3ZNTkl2Q0FcIiwgXCJVU1wiXSJ9fX0.KKjTUmWQGQl2WsdyFTacR063cvccnZ3IwO_3xOCbBT1-yD3EZvXBjOPi4-QAu1798dU99uLtEShI8A9wZdS-01-szsK8wrbKghNeJobkFeIYdo4eBGATFUOy9HG_m_fudGXVzrlEkYjWQAh0oA47tnDKBhlvb-Wgpylt3L5ABMTMyUABhdsJhTPIGoDUfk2VFvUixvH6NuppJTZazLCqR196tnI0LDL51W-e-RHVS_MAEIeex5TbLZxKFmdyyT49FnocvKM1lXGtBS6Yc73vNAiQ-GEmN0PUZaOzsnVlwJA6xVbwzjBlw4BDzvpJ3NEBik_iI4RAiwCOA-FnReokEw"
-
-        val releaseClaims = SimpleCredential(givenName = "", familyName = "", address = Address(region = "", country = ""), birthdate = "")
-        val presentationGen = createPresentation(credential, releaseClaims, verifier, nonce, holderKey)
-
-        println("Presentation: $presentationGen")
-
-        val (sdJwtGen, sdJwtRGen) = splitPresentation(presentationGen)
-        val (sdJwt, sdJwtR) = splitPresentation(presentation)
-        assertEquals(sdJwt, sdJwtGen)
-        assertEquals(sdJwtR.jwtClaimsSet, sdJwtRGen.jwtClaimsSet)
-
-        // Verify
-        val verifiedSimpleCredential = verifyPresentation<SimpleCredential>(presentation, trustedIssuers, nonce, verifier)
-
-        println("Verified credential: $verifiedSimpleCredential")
-
-        val simpleCredential = SimpleCredential(
+        val releaseClaims = SimpleCredential(
+            givenName = "",
+            familyName = "",
+            address = Address(region = "", country = ""),
+            birthdate = ""
+        )
+        val expectedClaims = SimpleCredential(
             givenName = "John",
             familyName = "Doe",
             birthdate = "1940-01-01",
             address = Address(region = "Anystate", country = "US")
         )
-        assertEquals(simpleCredential, verifiedSimpleCredential)
+
+        testRoutine(
+            expectedCredential,
+            expectedPresentation,
+            expectedClaims,
+            claims,
+            discloseStructure,
+            releaseClaims,
+            testConfig
+        )
     }
 
     @Serializable
@@ -171,6 +140,7 @@ internal class InterOpTest {
         val name: String? = null,
         val country: String? = null
     )
+
     @Serializable
     private data class Document(
         val type: String? = null,
@@ -179,6 +149,7 @@ internal class InterOpTest {
         @SerialName("date_of_issuance") val dateOfIssuance: String? = null,
         @SerialName("date_of_expiry") val dataOfExpiry: String? = null
     )
+
     @Serializable
     private data class Evidence(
         val type: String? = null,
@@ -186,11 +157,13 @@ internal class InterOpTest {
         val time: String? = null,
         val document: Document? = null
     )
+
     @Serializable
     private data class PlaceOfBirth(
         val country: String? = null,
         val locality: String? = null
     )
+
     @Serializable
     private data class AddressComplex(
         val locality: String? = null,
@@ -198,15 +171,17 @@ internal class InterOpTest {
         val country: String? = null,
         @SerialName("street_address") val streetAddress: String? = null
     )
+
     @Serializable
     private data class Claims(
         @SerialName("given_name") val givenName: String? = null,
         @SerialName("family_name") val familyName: String? = null,
         val birthdate: String? = null,
         @SerialName("place_of_birth") val placeOfBirth: PlaceOfBirth? = null,
-        val nationality: Set<String>? = null,
+        val nationalities: Set<String>? = null,
         val address: AddressComplex? = null
     )
+
     @Serializable
     private data class Verification(
         @SerialName("trust_framework") val trustFramwork: String? = null,
@@ -214,11 +189,13 @@ internal class InterOpTest {
         @SerialName("verification_process") val verificationProcess: String? = null,
         val evidence: Set<Evidence>? = null
     )
+
     @Serializable
     private data class VerifiedClaims(
         val verification: Verification? = null,
         val claims: Claims? = null
     )
+
     @Serializable
     private data class ComplexCredential(
         @SerialName("verified_claims") val verifiedClaims: VerifiedClaims? = null,
@@ -229,10 +206,11 @@ internal class InterOpTest {
 
     @Test
     internal fun complexTest() {
-        println("==========================================")
-        println("============== Complex Test ==============")
-        println("==========================================")
-        // Create credential
+        val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Complex Test")
+        val expectedCredential =
+            "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxNTgxMCwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InZlcmlmaWVkX2NsYWltcyI6IHsidmVyaWZpY2F0aW9uIjogeyJ0cnVzdF9mcmFtZXdvcmsiOiAidzFtUDRvUGNfSjl0aEJleDBUYVFpMXZneEZtcnVRSnhaWUxGbmtORk1hSSIsICJ0aW1lIjogIlB1M2kwQ1dyUFZMSlctTFQzMHlGMWJGQlBQMTVCNi11S2szUG5HRGZsdjgiLCAidmVyaWZpY2F0aW9uX3Byb2Nlc3MiOiAiOEhxSVhSbWN6c2RZT1p6R2NMcUk1LWw5eE41UWJLMlhEdFhtZGZIN3otNCIsICJldmlkZW5jZSI6IFt7InR5cGUiOiAiVG5MdXFHR1FtNmpmZU9vYTV1WDFkaUtBTlVQdWgtekhycEJGZFg5TVItZyIsICJtZXRob2QiOiAiU2FnbWFrb1N1LVgtWFVQSUMzRWdkckVFd0lXeFJXWFg0LWk2OFg5VHlFbyIsICJ0aW1lIjogImxkMmM1b1lEUnRRY2ZVNlB6b2dQa3hfOTVXWXFocUlKTlZSTW5mY3NpY1kiLCAiZG9jdW1lbnQiOiB7InR5cGUiOiAidWZXakRhQWE1NE1uSGVqaTJaVVVIRGRucFo5eng2Q1VHNnVSMjhWTXRzUSIsICJpc3N1ZXIiOiB7Im5hbWUiOiAiYTRHTXVjVTdaYjA2MHIwU3ZkN2h1WTZRaG8xYklmM3YxVTVCdlBSOHE2WSIsICJjb3VudHJ5IjogIjEzNWs5TTBtMlNDbllSdU9mSHVZU2NZVlMycTNlZVk3SUl0Z3lSc2FCVDgifSwgIm51bWJlciI6ICJjVXZPeExVcDhSVjdUVFZsaUVpdS1UUUllbC1Mc0U4RS1YZlVnZnFrNWdrIiwgImRhdGVfb2ZfaXNzdWFuY2UiOiAiTklzOG9sSm5KT3Y0SjFxSUVCS3VUczJzRUZzNGZnR0poTnFNNnhkUXQ3RSIsICJkYXRlX29mX2V4cGlyeSI6ICJIVFIzN3ZMdEFOVDZNV2stOWRCcWVrRnBDdmFURzd6TmYxemU1NnJuVjY0In19XX0sICJjbGFpbXMiOiB7ImdpdmVuX25hbWUiOiAiTkI5WEhfeUpLcUtPaFhEbVhrWktwTUNrUmJPbU9UZDhicUpGWURKWVFuUSIsICJmYW1pbHlfbmFtZSI6ICJoQVViSjY2WllMOVZKTGJqc0RwbVNzMmU5RmZfT2hpbV9XUjRid1p5dm9RIiwgImJpcnRoZGF0ZSI6ICI2WE9SNGs1NkJnV2s1dG5OaXNtYm1FSHZvR1g3UlJmeTZaOEhFTmw5NmNVIiwgInBsYWNlX29mX2JpcnRoIjogeyJjb3VudHJ5IjogIkNMVGxodXkxM1dXYzNfSVNvbjFrRXlwRnd2Q21maExTcEdVTUN5QVVnNjgiLCAibG9jYWxpdHkiOiAiQVFvWDhpeEdwei1pcHdlRUdsQy0ydW1xd3lRZGhqSWVpVUJfVEtXY0UyRSJ9LCAibmF0aW9uYWxpdGllcyI6ICJuZm9jX19RS2xNVUhvZG14d2xZLUtwLTZld2dYM0NkSzdJYTBSSkhJWFZvIiwgImFkZHJlc3MiOiAibmduTzR1UWVPa3RNN1lkRkQ4eDgyZG9TN1dKbmxabnEtclFFX1JmdUJTSSJ9fSwgImJpcnRoX21pZGRsZV9uYW1lIjogIkZlRlN3ZDlkcnlwRVB0V1ZnSVo0Mk45al95b3N0dDFEczVQQnB4VDNSbmciLCAic2FsdXRhdGlvbiI6ICI1N0NNaHZBU1FNTnV6dVEwYV9CMV9WWDVYZEg3M1RjdVB4eVdHaW9yajVnIiwgIm1zaXNkbiI6ICJsZUtiQjBybzZxM2pyVnJhQ3F0NDQzdWFHWlZaaXNEM2lHckt1S0UybXFNIn19.3qCYGcV5PngUeKJkyQ_FSK44X6ziB4LASYz1G00NoYCSWsJ05Paqg7FGN_G1BdG-qSM1M39dtvjHEL5bgt02OzYpfpvY6ivWTXOWP9zBnitO00a3SqCh4-U06zGu4amx-Ma0s4Vj9tNItveiYHsDiwpwiL1DJCcIvG83i_dTMA2esHi256q9DiGuPLk9b4cPfkWMeOM_i7CakPi5s8F2mBUh0c0CZUkDDTctnN68OcWEcKvO7ReTNkGHZi7TpxqgmsHHgIGQwyDytFkkGTMgvlbpg4sIqwLUE3c910jpJ0JAiawUoKRF4H7NZ3PSg9rlj-QUHyGX5wIiJ3uy78Ng5A.eyJzZF9yZWxlYXNlIjogeyJ2ZXJpZmllZF9jbGFpbXMiOiB7InZlcmlmaWNhdGlvbiI6IHsidHJ1c3RfZnJhbWV3b3JrIjogIltcIjJHTEM0MnNLUXZlQ2ZHZnJ5TlJOOXdcIiwgXCJkZV9hbWxcIl0iLCAidGltZSI6ICJbXCJlbHVWNU9nM2dTTklJOEVZbnN4QV9BXCIsIFwiMjAxMi0wNC0yM1QxODoyNVpcIl0iLCAidmVyaWZpY2F0aW9uX3Byb2Nlc3MiOiAiW1wiNklqN3RNLWE1aVZQR2JvUzV0bXZWQVwiLCBcImYyNGM2Zi02ZDNmLTRlYzUtOTczZS1iMGQ4NTA2ZjNiYzdcIl0iLCAiZXZpZGVuY2UiOiBbeyJ0eXBlIjogIltcImVJOFpXbTlRbktQcE5QZU5lbkhkaFFcIiwgXCJkb2N1bWVudFwiXSIsICJtZXRob2QiOiAiW1wiUWdfTzY0enFBeGU0MTJhMTA4aXJvQVwiLCBcInBpcHBcIl0iLCAidGltZSI6ICJbXCJBSngtMDk1VlBycFR0TjRRTU9xUk9BXCIsIFwiMjAxMi0wNC0yMlQxMTozMFpcIl0iLCAiZG9jdW1lbnQiOiB7InR5cGUiOiAiW1wiUGMzM0pNMkxjaGNVX2xIZ2d2X3VmUVwiLCBcImlkY2FyZFwiXSIsICJpc3N1ZXIiOiB7Im5hbWUiOiAiW1wiRzAyTlNyUWZqRlhRN0lvMDlzeWFqQVwiLCBcIlN0YWR0IEF1Z3NidXJnXCJdIiwgImNvdW50cnkiOiAiW1wibGtseEY1ak1ZbEdUUFVvdk1OSXZDQVwiLCBcIkRFXCJdIn0sICJudW1iZXIiOiAiW1wiblB1b1Fua1JGcTNCSWVBbTdBblhGQVwiLCBcIjUzNTU0NTU0XCJdIiwgImRhdGVfb2ZfaXNzdWFuY2UiOiAiW1wiNWJQczFJcXVaTmEwaGthRnp6elpOd1wiLCBcIjIwMTAtMDMtMjNcIl0iLCAiZGF0ZV9vZl9leHBpcnkiOiAiW1wiNWEyVzBfTnJsRVp6ZnFta183UHEtd1wiLCBcIjIwMjAtMDMtMjJcIl0ifX1dfSwgImNsYWltcyI6IHsiZ2l2ZW5fbmFtZSI6ICJbXCJ5MXNWVTV3ZGZKYWhWZGd3UGdTN1JRXCIsIFwiTWF4XCJdIiwgImZhbWlseV9uYW1lIjogIltcIkhiUTRYOHNyVlczUUR4bklKZHF5T0FcIiwgXCJNZWllclwiXSIsICJiaXJ0aGRhdGUiOiAiW1wiQzlHU291anZpSnF1RWdZZm9qQ2IxQVwiLCBcIjE5NTYtMDEtMjhcIl0iLCAicGxhY2Vfb2ZfYmlydGgiOiB7ImNvdW50cnkiOiAiW1wia3g1a0YxN1YteDBKbXdVeDl2Z3Z0d1wiLCBcIkRFXCJdIiwgImxvY2FsaXR5IjogIltcIkgzbzF1c3dQNzYwRmkyeWVHZFZDRVFcIiwgXCJNdXN0ZXJzdGFkdFwiXSJ9LCAibmF0aW9uYWxpdGllcyI6ICJbXCJPQktsVFZsdkxnLUFkd3FZR2JQOFpBXCIsIFtcIkRFXCJdXSIsICJhZGRyZXNzIjogIltcIk0wSmI1N3Q0MXVicmtTdXlyRFQzeEFcIiwge1wibG9jYWxpdHlcIjogXCJNYXhzdGFkdFwiLCBcInBvc3RhbF9jb2RlXCI6IFwiMTIzNDRcIiwgXCJjb3VudHJ5XCI6IFwiREVcIiwgXCJzdHJlZXRfYWRkcmVzc1wiOiBcIkFuIGRlciBXZWlkZSAyMlwifV0ifX0sICJiaXJ0aF9taWRkbGVfbmFtZSI6ICJbXCJEc210S05ncFY0ZEFIcGpyY2Fvc0F3XCIsIFwiVGltb3RoZXVzXCJdIiwgInNhbHV0YXRpb24iOiAiW1wiZUs1bzVwSGZndXBQcGx0ajFxaEFKd1wiLCBcIkRyLlwiXSIsICJtc2lzZG4iOiAiW1wiajdBRGRiMFVWYjBMaTBjaVBjUDBld1wiLCBcIjQ5MTIzNDU2Nzg5XCJdIn19"
+        val expectedPresentation =
+            "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxNTgxMCwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InZlcmlmaWVkX2NsYWltcyI6IHsidmVyaWZpY2F0aW9uIjogeyJ0cnVzdF9mcmFtZXdvcmsiOiAidzFtUDRvUGNfSjl0aEJleDBUYVFpMXZneEZtcnVRSnhaWUxGbmtORk1hSSIsICJ0aW1lIjogIlB1M2kwQ1dyUFZMSlctTFQzMHlGMWJGQlBQMTVCNi11S2szUG5HRGZsdjgiLCAidmVyaWZpY2F0aW9uX3Byb2Nlc3MiOiAiOEhxSVhSbWN6c2RZT1p6R2NMcUk1LWw5eE41UWJLMlhEdFhtZGZIN3otNCIsICJldmlkZW5jZSI6IFt7InR5cGUiOiAiVG5MdXFHR1FtNmpmZU9vYTV1WDFkaUtBTlVQdWgtekhycEJGZFg5TVItZyIsICJtZXRob2QiOiAiU2FnbWFrb1N1LVgtWFVQSUMzRWdkckVFd0lXeFJXWFg0LWk2OFg5VHlFbyIsICJ0aW1lIjogImxkMmM1b1lEUnRRY2ZVNlB6b2dQa3hfOTVXWXFocUlKTlZSTW5mY3NpY1kiLCAiZG9jdW1lbnQiOiB7InR5cGUiOiAidWZXakRhQWE1NE1uSGVqaTJaVVVIRGRucFo5eng2Q1VHNnVSMjhWTXRzUSIsICJpc3N1ZXIiOiB7Im5hbWUiOiAiYTRHTXVjVTdaYjA2MHIwU3ZkN2h1WTZRaG8xYklmM3YxVTVCdlBSOHE2WSIsICJjb3VudHJ5IjogIjEzNWs5TTBtMlNDbllSdU9mSHVZU2NZVlMycTNlZVk3SUl0Z3lSc2FCVDgifSwgIm51bWJlciI6ICJjVXZPeExVcDhSVjdUVFZsaUVpdS1UUUllbC1Mc0U4RS1YZlVnZnFrNWdrIiwgImRhdGVfb2ZfaXNzdWFuY2UiOiAiTklzOG9sSm5KT3Y0SjFxSUVCS3VUczJzRUZzNGZnR0poTnFNNnhkUXQ3RSIsICJkYXRlX29mX2V4cGlyeSI6ICJIVFIzN3ZMdEFOVDZNV2stOWRCcWVrRnBDdmFURzd6TmYxemU1NnJuVjY0In19XX0sICJjbGFpbXMiOiB7ImdpdmVuX25hbWUiOiAiTkI5WEhfeUpLcUtPaFhEbVhrWktwTUNrUmJPbU9UZDhicUpGWURKWVFuUSIsICJmYW1pbHlfbmFtZSI6ICJoQVViSjY2WllMOVZKTGJqc0RwbVNzMmU5RmZfT2hpbV9XUjRid1p5dm9RIiwgImJpcnRoZGF0ZSI6ICI2WE9SNGs1NkJnV2s1dG5OaXNtYm1FSHZvR1g3UlJmeTZaOEhFTmw5NmNVIiwgInBsYWNlX29mX2JpcnRoIjogeyJjb3VudHJ5IjogIkNMVGxodXkxM1dXYzNfSVNvbjFrRXlwRnd2Q21maExTcEdVTUN5QVVnNjgiLCAibG9jYWxpdHkiOiAiQVFvWDhpeEdwei1pcHdlRUdsQy0ydW1xd3lRZGhqSWVpVUJfVEtXY0UyRSJ9LCAibmF0aW9uYWxpdGllcyI6ICJuZm9jX19RS2xNVUhvZG14d2xZLUtwLTZld2dYM0NkSzdJYTBSSkhJWFZvIiwgImFkZHJlc3MiOiAibmduTzR1UWVPa3RNN1lkRkQ4eDgyZG9TN1dKbmxabnEtclFFX1JmdUJTSSJ9fSwgImJpcnRoX21pZGRsZV9uYW1lIjogIkZlRlN3ZDlkcnlwRVB0V1ZnSVo0Mk45al95b3N0dDFEczVQQnB4VDNSbmciLCAic2FsdXRhdGlvbiI6ICI1N0NNaHZBU1FNTnV6dVEwYV9CMV9WWDVYZEg3M1RjdVB4eVdHaW9yajVnIiwgIm1zaXNkbiI6ICJsZUtiQjBybzZxM2pyVnJhQ3F0NDQzdWFHWlZaaXNEM2lHckt1S0UybXFNIn19.3qCYGcV5PngUeKJkyQ_FSK44X6ziB4LASYz1G00NoYCSWsJ05Paqg7FGN_G1BdG-qSM1M39dtvjHEL5bgt02OzYpfpvY6ivWTXOWP9zBnitO00a3SqCh4-U06zGu4amx-Ma0s4Vj9tNItveiYHsDiwpwiL1DJCcIvG83i_dTMA2esHi256q9DiGuPLk9b4cPfkWMeOM_i7CakPi5s8F2mBUh0c0CZUkDDTctnN68OcWEcKvO7ReTNkGHZi7TpxqgmsHHgIGQwyDytFkkGTMgvlbpg4sIqwLUE3c910jpJ0JAiawUoKRF4H7NZ3PSg9rlj-QUHyGX5wIiJ3uy78Ng5A.eyJhbGciOiAiUlMyNTYiLCAia2lkIjogIkxkeVRYd0F5ZnJpcjRfVjZORzFSYzEwVThKZExZVHJFQktKaF9oNWlfclUifQ.eyJub25jZSI6ICJ5b3hDaURtNXNWUC1PVE5ZdGFfRERnIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgInNkX3JlbGVhc2UiOiB7InZlcmlmaWVkX2NsYWltcyI6IHsidmVyaWZpY2F0aW9uIjogeyJ0cnVzdF9mcmFtZXdvcmsiOiAiW1wiMkdMQzQyc0tRdmVDZkdmcnlOUk45d1wiLCBcImRlX2FtbFwiXSIsICJ0aW1lIjogIltcImVsdVY1T2czZ1NOSUk4RVluc3hBX0FcIiwgXCIyMDEyLTA0LTIzVDE4OjI1WlwiXSIsICJldmlkZW5jZSI6IFt7InR5cGUiOiAiW1wiZUk4WldtOVFuS1BwTlBlTmVuSGRoUVwiLCBcImRvY3VtZW50XCJdIn1dfSwgImNsYWltcyI6IHsiZ2l2ZW5fbmFtZSI6ICJbXCJ5MXNWVTV3ZGZKYWhWZGd3UGdTN1JRXCIsIFwiTWF4XCJdIiwgImZhbWlseV9uYW1lIjogIltcIkhiUTRYOHNyVlczUUR4bklKZHF5T0FcIiwgXCJNZWllclwiXSIsICJiaXJ0aGRhdGUiOiAiW1wiQzlHU291anZpSnF1RWdZZm9qQ2IxQVwiLCBcIjE5NTYtMDEtMjhcIl0iLCAicGxhY2Vfb2ZfYmlydGgiOiB7ImNvdW50cnkiOiAiW1wia3g1a0YxN1YteDBKbXdVeDl2Z3Z0d1wiLCBcIkRFXCJdIn19fX19.ERvFEWtADBHfG_MLPDcp0Yam4O3F92lJp19fV-_D3tRmnfC2zpl6wiXLl3ZVf-m_mbIofxnpMuVvhUREifdyFfxFuoNPoVCQArsFxaY77VG_fn-AiY21KH73MY5aedx-twNYeIoPWqGs_5qofSBzJ-OVD-G-cMtD_o30EiEyJiEYinamLwS9v_WocQDtyV8W1O0P0uk6vhtG4AdefobvFqeosmLDsMX3uy0Hwe6cW2Nusoz3Z0NllvTPJtQr4aB39DCNXdEbmRP1MPuEgJz4j0Is8mIr2TfXFFdM6Mbh1emWbYObuqhnnK7YOdJBh01FB2bsY5cldAj58wjOmRbj0g"
         val claims = ComplexCredential(
             verifiedClaims = VerifiedClaims(
                 verification = Verification(
@@ -244,7 +222,13 @@ internal class InterOpTest {
                             type = "document",
                             method = "pipp",
                             time = "2012-04-22T11:30Z",
-                            document = Document(type = "idcard", issuer = Issuer(name = "Stadt Augsburg", country = "DE"), number = "53554554", dateOfIssuance = "2010-03-23", dataOfExpiry = "2020-03-22")
+                            document = Document(
+                                type = "idcard",
+                                issuer = Issuer(name = "Stadt Augsburg", country = "DE"),
+                                number = "53554554",
+                                dateOfIssuance = "2010-03-23",
+                                dataOfExpiry = "2020-03-22"
+                            )
                         )
                     ),
                 ),
@@ -253,7 +237,7 @@ internal class InterOpTest {
                     familyName = "Meier",
                     birthdate = "1956-01-28",
                     placeOfBirth = PlaceOfBirth(country = "DE", locality = "Musterstadt"),
-                    nationality = setOf("DE"),
+                    nationalities = setOf("DE"),
                     address = AddressComplex(
                         locality = "Maxstadt",
                         postalCode = "12344",
@@ -266,37 +250,47 @@ internal class InterOpTest {
             salutation = "Dr.",
             msisdn = "49123456789"
         )
-
-        // Compare presentations
-        val credential = "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxNTgxMCwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InZlcmlmaWVkX2NsYWltcyI6IHsidmVyaWZpY2F0aW9uIjogeyJ0cnVzdF9mcmFtZXdvcmsiOiAidzFtUDRvUGNfSjl0aEJleDBUYVFpMXZneEZtcnVRSnhaWUxGbmtORk1hSSIsICJ0aW1lIjogIlB1M2kwQ1dyUFZMSlctTFQzMHlGMWJGQlBQMTVCNi11S2szUG5HRGZsdjgiLCAidmVyaWZpY2F0aW9uX3Byb2Nlc3MiOiAiOEhxSVhSbWN6c2RZT1p6R2NMcUk1LWw5eE41UWJLMlhEdFhtZGZIN3otNCIsICJldmlkZW5jZSI6IFt7InR5cGUiOiAiVG5MdXFHR1FtNmpmZU9vYTV1WDFkaUtBTlVQdWgtekhycEJGZFg5TVItZyIsICJtZXRob2QiOiAiU2FnbWFrb1N1LVgtWFVQSUMzRWdkckVFd0lXeFJXWFg0LWk2OFg5VHlFbyIsICJ0aW1lIjogImxkMmM1b1lEUnRRY2ZVNlB6b2dQa3hfOTVXWXFocUlKTlZSTW5mY3NpY1kiLCAiZG9jdW1lbnQiOiB7InR5cGUiOiAidWZXakRhQWE1NE1uSGVqaTJaVVVIRGRucFo5eng2Q1VHNnVSMjhWTXRzUSIsICJpc3N1ZXIiOiB7Im5hbWUiOiAiYTRHTXVjVTdaYjA2MHIwU3ZkN2h1WTZRaG8xYklmM3YxVTVCdlBSOHE2WSIsICJjb3VudHJ5IjogIjEzNWs5TTBtMlNDbllSdU9mSHVZU2NZVlMycTNlZVk3SUl0Z3lSc2FCVDgifSwgIm51bWJlciI6ICJjVXZPeExVcDhSVjdUVFZsaUVpdS1UUUllbC1Mc0U4RS1YZlVnZnFrNWdrIiwgImRhdGVfb2ZfaXNzdWFuY2UiOiAiTklzOG9sSm5KT3Y0SjFxSUVCS3VUczJzRUZzNGZnR0poTnFNNnhkUXQ3RSIsICJkYXRlX29mX2V4cGlyeSI6ICJIVFIzN3ZMdEFOVDZNV2stOWRCcWVrRnBDdmFURzd6TmYxemU1NnJuVjY0In19XX0sICJjbGFpbXMiOiB7ImdpdmVuX25hbWUiOiAiTkI5WEhfeUpLcUtPaFhEbVhrWktwTUNrUmJPbU9UZDhicUpGWURKWVFuUSIsICJmYW1pbHlfbmFtZSI6ICJoQVViSjY2WllMOVZKTGJqc0RwbVNzMmU5RmZfT2hpbV9XUjRid1p5dm9RIiwgImJpcnRoZGF0ZSI6ICI2WE9SNGs1NkJnV2s1dG5OaXNtYm1FSHZvR1g3UlJmeTZaOEhFTmw5NmNVIiwgInBsYWNlX29mX2JpcnRoIjogeyJjb3VudHJ5IjogIkNMVGxodXkxM1dXYzNfSVNvbjFrRXlwRnd2Q21maExTcEdVTUN5QVVnNjgiLCAibG9jYWxpdHkiOiAiQVFvWDhpeEdwei1pcHdlRUdsQy0ydW1xd3lRZGhqSWVpVUJfVEtXY0UyRSJ9LCAibmF0aW9uYWxpdGllcyI6ICJuZm9jX19RS2xNVUhvZG14d2xZLUtwLTZld2dYM0NkSzdJYTBSSkhJWFZvIiwgImFkZHJlc3MiOiAibmduTzR1UWVPa3RNN1lkRkQ4eDgyZG9TN1dKbmxabnEtclFFX1JmdUJTSSJ9fSwgImJpcnRoX21pZGRsZV9uYW1lIjogIkZlRlN3ZDlkcnlwRVB0V1ZnSVo0Mk45al95b3N0dDFEczVQQnB4VDNSbmciLCAic2FsdXRhdGlvbiI6ICI1N0NNaHZBU1FNTnV6dVEwYV9CMV9WWDVYZEg3M1RjdVB4eVdHaW9yajVnIiwgIm1zaXNkbiI6ICJsZUtiQjBybzZxM2pyVnJhQ3F0NDQzdWFHWlZaaXNEM2lHckt1S0UybXFNIn19.3qCYGcV5PngUeKJkyQ_FSK44X6ziB4LASYz1G00NoYCSWsJ05Paqg7FGN_G1BdG-qSM1M39dtvjHEL5bgt02OzYpfpvY6ivWTXOWP9zBnitO00a3SqCh4-U06zGu4amx-Ma0s4Vj9tNItveiYHsDiwpwiL1DJCcIvG83i_dTMA2esHi256q9DiGuPLk9b4cPfkWMeOM_i7CakPi5s8F2mBUh0c0CZUkDDTctnN68OcWEcKvO7ReTNkGHZi7TpxqgmsHHgIGQwyDytFkkGTMgvlbpg4sIqwLUE3c910jpJ0JAiawUoKRF4H7NZ3PSg9rlj-QUHyGX5wIiJ3uy78Ng5A.eyJzZF9yZWxlYXNlIjogeyJ2ZXJpZmllZF9jbGFpbXMiOiB7InZlcmlmaWNhdGlvbiI6IHsidHJ1c3RfZnJhbWV3b3JrIjogIltcIjJHTEM0MnNLUXZlQ2ZHZnJ5TlJOOXdcIiwgXCJkZV9hbWxcIl0iLCAidGltZSI6ICJbXCJlbHVWNU9nM2dTTklJOEVZbnN4QV9BXCIsIFwiMjAxMi0wNC0yM1QxODoyNVpcIl0iLCAidmVyaWZpY2F0aW9uX3Byb2Nlc3MiOiAiW1wiNklqN3RNLWE1aVZQR2JvUzV0bXZWQVwiLCBcImYyNGM2Zi02ZDNmLTRlYzUtOTczZS1iMGQ4NTA2ZjNiYzdcIl0iLCAiZXZpZGVuY2UiOiBbeyJ0eXBlIjogIltcImVJOFpXbTlRbktQcE5QZU5lbkhkaFFcIiwgXCJkb2N1bWVudFwiXSIsICJtZXRob2QiOiAiW1wiUWdfTzY0enFBeGU0MTJhMTA4aXJvQVwiLCBcInBpcHBcIl0iLCAidGltZSI6ICJbXCJBSngtMDk1VlBycFR0TjRRTU9xUk9BXCIsIFwiMjAxMi0wNC0yMlQxMTozMFpcIl0iLCAiZG9jdW1lbnQiOiB7InR5cGUiOiAiW1wiUGMzM0pNMkxjaGNVX2xIZ2d2X3VmUVwiLCBcImlkY2FyZFwiXSIsICJpc3N1ZXIiOiB7Im5hbWUiOiAiW1wiRzAyTlNyUWZqRlhRN0lvMDlzeWFqQVwiLCBcIlN0YWR0IEF1Z3NidXJnXCJdIiwgImNvdW50cnkiOiAiW1wibGtseEY1ak1ZbEdUUFVvdk1OSXZDQVwiLCBcIkRFXCJdIn0sICJudW1iZXIiOiAiW1wiblB1b1Fua1JGcTNCSWVBbTdBblhGQVwiLCBcIjUzNTU0NTU0XCJdIiwgImRhdGVfb2ZfaXNzdWFuY2UiOiAiW1wiNWJQczFJcXVaTmEwaGthRnp6elpOd1wiLCBcIjIwMTAtMDMtMjNcIl0iLCAiZGF0ZV9vZl9leHBpcnkiOiAiW1wiNWEyVzBfTnJsRVp6ZnFta183UHEtd1wiLCBcIjIwMjAtMDMtMjJcIl0ifX1dfSwgImNsYWltcyI6IHsiZ2l2ZW5fbmFtZSI6ICJbXCJ5MXNWVTV3ZGZKYWhWZGd3UGdTN1JRXCIsIFwiTWF4XCJdIiwgImZhbWlseV9uYW1lIjogIltcIkhiUTRYOHNyVlczUUR4bklKZHF5T0FcIiwgXCJNZWllclwiXSIsICJiaXJ0aGRhdGUiOiAiW1wiQzlHU291anZpSnF1RWdZZm9qQ2IxQVwiLCBcIjE5NTYtMDEtMjhcIl0iLCAicGxhY2Vfb2ZfYmlydGgiOiB7ImNvdW50cnkiOiAiW1wia3g1a0YxN1YteDBKbXdVeDl2Z3Z0d1wiLCBcIkRFXCJdIiwgImxvY2FsaXR5IjogIltcIkgzbzF1c3dQNzYwRmkyeWVHZFZDRVFcIiwgXCJNdXN0ZXJzdGFkdFwiXSJ9LCAibmF0aW9uYWxpdGllcyI6ICJbXCJPQktsVFZsdkxnLUFkd3FZR2JQOFpBXCIsIFtcIkRFXCJdXSIsICJhZGRyZXNzIjogIltcIk0wSmI1N3Q0MXVicmtTdXlyRFQzeEFcIiwge1wibG9jYWxpdHlcIjogXCJNYXhzdGFkdFwiLCBcInBvc3RhbF9jb2RlXCI6IFwiMTIzNDRcIiwgXCJjb3VudHJ5XCI6IFwiREVcIiwgXCJzdHJlZXRfYWRkcmVzc1wiOiBcIkFuIGRlciBXZWlkZSAyMlwifV0ifX0sICJiaXJ0aF9taWRkbGVfbmFtZSI6ICJbXCJEc210S05ncFY0ZEFIcGpyY2Fvc0F3XCIsIFwiVGltb3RoZXVzXCJdIiwgInNhbHV0YXRpb24iOiAiW1wiZUs1bzVwSGZndXBQcGx0ajFxaEFKd1wiLCBcIkRyLlwiXSIsICJtc2lzZG4iOiAiW1wiajdBRGRiMFVWYjBMaTBjaVBjUDBld1wiLCBcIjQ5MTIzNDU2Nzg5XCJdIn19"
-        val presentation = "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImNBRUlVcUowY21MekQxa3pHemhlaUJhZzBZUkF6VmRsZnhOMjgwTmdIYUEifQ.eyJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiY25mIjogeyJrdHkiOiAiUlNBIiwgIm4iOiAicG00Yk9IQmctb1loQXlQV3pSNTZBV1gzclVJWHAxMV9JQ0RrR2dTNlczWldMdHMtaHp3STN4NjU2NTlrZzRoVm85ZGJHb0NKRTNaR0ZfZWFldEUzMFVoQlVFZ3BHd3JEclFpSjl6cXBybWNGZnIzcXZ2a0dqdHRoOFpnbDFlTTJiSmNPd0U3UENCSFdUS1dZczE1MlI3ZzZKZzJPVnBoLWE4cnEtcTc5TWhLRzVRb1dfbVR6MTBRVF82SDRjN1BqV0cxZmpoOGhwV05uYlBfcHY2ZDF6U3daZmM1Zmw2eVZSTDBEVjBWM2xHSEtlMldxZl9lTkdqQnJCTFZrbERUazgtc3RYX01XTGNSLUVHbVhBT3YwVUJXaXRTX2RYSktKdS12WEp5dzE0bkhTR3V4VElLMmh4MXB0dE1mdDlDc3ZxaW1YS2VEVFUxNHFRTDFlRTdpaGN3IiwgImUiOiAiQVFBQiJ9LCAiaWF0IjogMTY2MDUxNTgxMCwgImV4cCI6IDI1MjQ2MDgwMDAsICJzZF9oYXNoX2FsZyI6ICJzaGEtMjU2IiwgInNkX2RpZ2VzdHMiOiB7InZlcmlmaWVkX2NsYWltcyI6IHsidmVyaWZpY2F0aW9uIjogeyJ0cnVzdF9mcmFtZXdvcmsiOiAidzFtUDRvUGNfSjl0aEJleDBUYVFpMXZneEZtcnVRSnhaWUxGbmtORk1hSSIsICJ0aW1lIjogIlB1M2kwQ1dyUFZMSlctTFQzMHlGMWJGQlBQMTVCNi11S2szUG5HRGZsdjgiLCAidmVyaWZpY2F0aW9uX3Byb2Nlc3MiOiAiOEhxSVhSbWN6c2RZT1p6R2NMcUk1LWw5eE41UWJLMlhEdFhtZGZIN3otNCIsICJldmlkZW5jZSI6IFt7InR5cGUiOiAiVG5MdXFHR1FtNmpmZU9vYTV1WDFkaUtBTlVQdWgtekhycEJGZFg5TVItZyIsICJtZXRob2QiOiAiU2FnbWFrb1N1LVgtWFVQSUMzRWdkckVFd0lXeFJXWFg0LWk2OFg5VHlFbyIsICJ0aW1lIjogImxkMmM1b1lEUnRRY2ZVNlB6b2dQa3hfOTVXWXFocUlKTlZSTW5mY3NpY1kiLCAiZG9jdW1lbnQiOiB7InR5cGUiOiAidWZXakRhQWE1NE1uSGVqaTJaVVVIRGRucFo5eng2Q1VHNnVSMjhWTXRzUSIsICJpc3N1ZXIiOiB7Im5hbWUiOiAiYTRHTXVjVTdaYjA2MHIwU3ZkN2h1WTZRaG8xYklmM3YxVTVCdlBSOHE2WSIsICJjb3VudHJ5IjogIjEzNWs5TTBtMlNDbllSdU9mSHVZU2NZVlMycTNlZVk3SUl0Z3lSc2FCVDgifSwgIm51bWJlciI6ICJjVXZPeExVcDhSVjdUVFZsaUVpdS1UUUllbC1Mc0U4RS1YZlVnZnFrNWdrIiwgImRhdGVfb2ZfaXNzdWFuY2UiOiAiTklzOG9sSm5KT3Y0SjFxSUVCS3VUczJzRUZzNGZnR0poTnFNNnhkUXQ3RSIsICJkYXRlX29mX2V4cGlyeSI6ICJIVFIzN3ZMdEFOVDZNV2stOWRCcWVrRnBDdmFURzd6TmYxemU1NnJuVjY0In19XX0sICJjbGFpbXMiOiB7ImdpdmVuX25hbWUiOiAiTkI5WEhfeUpLcUtPaFhEbVhrWktwTUNrUmJPbU9UZDhicUpGWURKWVFuUSIsICJmYW1pbHlfbmFtZSI6ICJoQVViSjY2WllMOVZKTGJqc0RwbVNzMmU5RmZfT2hpbV9XUjRid1p5dm9RIiwgImJpcnRoZGF0ZSI6ICI2WE9SNGs1NkJnV2s1dG5OaXNtYm1FSHZvR1g3UlJmeTZaOEhFTmw5NmNVIiwgInBsYWNlX29mX2JpcnRoIjogeyJjb3VudHJ5IjogIkNMVGxodXkxM1dXYzNfSVNvbjFrRXlwRnd2Q21maExTcEdVTUN5QVVnNjgiLCAibG9jYWxpdHkiOiAiQVFvWDhpeEdwei1pcHdlRUdsQy0ydW1xd3lRZGhqSWVpVUJfVEtXY0UyRSJ9LCAibmF0aW9uYWxpdGllcyI6ICJuZm9jX19RS2xNVUhvZG14d2xZLUtwLTZld2dYM0NkSzdJYTBSSkhJWFZvIiwgImFkZHJlc3MiOiAibmduTzR1UWVPa3RNN1lkRkQ4eDgyZG9TN1dKbmxabnEtclFFX1JmdUJTSSJ9fSwgImJpcnRoX21pZGRsZV9uYW1lIjogIkZlRlN3ZDlkcnlwRVB0V1ZnSVo0Mk45al95b3N0dDFEczVQQnB4VDNSbmciLCAic2FsdXRhdGlvbiI6ICI1N0NNaHZBU1FNTnV6dVEwYV9CMV9WWDVYZEg3M1RjdVB4eVdHaW9yajVnIiwgIm1zaXNkbiI6ICJsZUtiQjBybzZxM2pyVnJhQ3F0NDQzdWFHWlZaaXNEM2lHckt1S0UybXFNIn19.3qCYGcV5PngUeKJkyQ_FSK44X6ziB4LASYz1G00NoYCSWsJ05Paqg7FGN_G1BdG-qSM1M39dtvjHEL5bgt02OzYpfpvY6ivWTXOWP9zBnitO00a3SqCh4-U06zGu4amx-Ma0s4Vj9tNItveiYHsDiwpwiL1DJCcIvG83i_dTMA2esHi256q9DiGuPLk9b4cPfkWMeOM_i7CakPi5s8F2mBUh0c0CZUkDDTctnN68OcWEcKvO7ReTNkGHZi7TpxqgmsHHgIGQwyDytFkkGTMgvlbpg4sIqwLUE3c910jpJ0JAiawUoKRF4H7NZ3PSg9rlj-QUHyGX5wIiJ3uy78Ng5A.eyJhbGciOiAiUlMyNTYiLCAia2lkIjogIkxkeVRYd0F5ZnJpcjRfVjZORzFSYzEwVThKZExZVHJFQktKaF9oNWlfclUifQ.eyJub25jZSI6ICJ5b3hDaURtNXNWUC1PVE5ZdGFfRERnIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgInNkX3JlbGVhc2UiOiB7InZlcmlmaWVkX2NsYWltcyI6IHsidmVyaWZpY2F0aW9uIjogeyJ0cnVzdF9mcmFtZXdvcmsiOiAiW1wiMkdMQzQyc0tRdmVDZkdmcnlOUk45d1wiLCBcImRlX2FtbFwiXSIsICJ0aW1lIjogIltcImVsdVY1T2czZ1NOSUk4RVluc3hBX0FcIiwgXCIyMDEyLTA0LTIzVDE4OjI1WlwiXSIsICJldmlkZW5jZSI6IFt7InR5cGUiOiAiW1wiZUk4WldtOVFuS1BwTlBlTmVuSGRoUVwiLCBcImRvY3VtZW50XCJdIn1dfSwgImNsYWltcyI6IHsiZ2l2ZW5fbmFtZSI6ICJbXCJ5MXNWVTV3ZGZKYWhWZGd3UGdTN1JRXCIsIFwiTWF4XCJdIiwgImZhbWlseV9uYW1lIjogIltcIkhiUTRYOHNyVlczUUR4bklKZHF5T0FcIiwgXCJNZWllclwiXSIsICJiaXJ0aGRhdGUiOiAiW1wiQzlHU291anZpSnF1RWdZZm9qQ2IxQVwiLCBcIjE5NTYtMDEtMjhcIl0iLCAicGxhY2Vfb2ZfYmlydGgiOiB7ImNvdW50cnkiOiAiW1wia3g1a0YxN1YteDBKbXdVeDl2Z3Z0d1wiLCBcIkRFXCJdIn19fX19.ERvFEWtADBHfG_MLPDcp0Yam4O3F92lJp19fV-_D3tRmnfC2zpl6wiXLl3ZVf-m_mbIofxnpMuVvhUREifdyFfxFuoNPoVCQArsFxaY77VG_fn-AiY21KH73MY5aedx-twNYeIoPWqGs_5qofSBzJ-OVD-G-cMtD_o30EiEyJiEYinamLwS9v_WocQDtyV8W1O0P0uk6vhtG4AdefobvFqeosmLDsMX3uy0Hwe6cW2Nusoz3Z0NllvTPJtQr4aB39DCNXdEbmRP1MPuEgJz4j0Is8mIr2TfXFFdM6Mbh1emWbYObuqhnnK7YOdJBh01FB2bsY5cldAj58wjOmRbj0g"
-
-        val releaseClaims = ComplexCredential(verifiedClaims = VerifiedClaims(
-            verification = Verification(trustFramwork = "", time = "", evidence = setOf(Evidence(type = ""))),
-            claims = Claims(givenName = "", familyName = "", birthdate = "", placeOfBirth = PlaceOfBirth(country = ""))
-        ))
-        val presentationGen = createPresentation(credential, releaseClaims, verifier, nonce, holderKey)
-
-        val (sdJwtGen, sdJwtRGen) = splitPresentation(presentationGen)
-        val (sdJwt, sdJwtR) = splitPresentation(presentation)
-        assertEquals(sdJwt, sdJwtGen)
-        assertEquals(sdJwtR.jwtClaimsSet, sdJwtRGen.jwtClaimsSet)
-
-        // Verify
-        val verifiedComplexCredential = verifyPresentation<ComplexCredential>(presentation, trustedIssuers, nonce, verifier)
-
-        println("Verified credential: $verifiedComplexCredential")
-
-        val complexCredential = ComplexCredential(
+        val discloseStructure = ComplexCredential(
+            verifiedClaims = VerifiedClaims(
+                verification = Verification(evidence = setOf(Evidence(document = Document(issuer = Issuer())))),
+                claims = Claims(placeOfBirth = PlaceOfBirth())
+            )
+        )
+        val releaseClaims = ComplexCredential(
+            verifiedClaims = VerifiedClaims(
+                verification = Verification(trustFramwork = "", time = "", evidence = setOf(Evidence(type = ""))),
+                claims = Claims(
+                    givenName = "",
+                    familyName = "",
+                    birthdate = "",
+                    placeOfBirth = PlaceOfBirth(country = "")
+                )
+            )
+        )
+        val expectedClaims = ComplexCredential(
             VerifiedClaims(
                 verification = Verification(
                     trustFramwork = "de_aml",
                     time = "2012-04-23T18:25Z",
                     evidence = setOf(Evidence(type = "document"))
                 ),
-                claims = Claims(givenName = "Max", familyName = "Meier", birthdate = "1956-01-28", placeOfBirth = PlaceOfBirth(country = "DE"))
+                claims = Claims(
+                    givenName = "Max",
+                    familyName = "Meier",
+                    birthdate = "1956-01-28",
+                    placeOfBirth = PlaceOfBirth(country = "DE")
+                )
             )
         )
-        assertEquals(complexCredential, verifiedComplexCredential)
+
+        testRoutine(
+            expectedCredential,
+            expectedPresentation,
+            expectedClaims,
+            claims,
+            discloseStructure,
+            releaseClaims,
+            testConfig
+        )
     }
 }
