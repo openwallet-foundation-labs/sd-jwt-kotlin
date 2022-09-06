@@ -56,12 +56,12 @@ fun createDigest(s: Any?, claim: Any): String {
  * This method creates a SD-JWT credential that contains the claims
  * passed to the method and is signed with the issuer's key.
  *
- * @param claims        A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
- * @param holderPubKey  The holder's public key if holder binding is required
- * @param issuer        URL that identifies the issuer
- * @param issuerKey     The issuer's private key to sign the SD-JWT
- * @param depth         Specifies to which level the claims should be individually disclosable (default 0)
- * @return              Serialized SD-JWT + SVC to send to the holder
+ * @param claims            A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
+ * @param holderPubKey      The holder's public key if holder binding is required
+ * @param issuer            URL that identifies the issuer
+ * @param issuerKey         The issuer's private key to sign the SD-JWT
+ * @param discloseStructure Class that has a non-null value for every object that should be disclosable separately
+ * @return                  Serialized SD-JWT + SVC to send to the holder
  */
 inline fun <reified T> createCredential(
     claims: T,
