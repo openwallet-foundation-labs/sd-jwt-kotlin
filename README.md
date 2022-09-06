@@ -4,7 +4,7 @@ This is a Kotlin implementation of the [Selective Disclosure for JWTs](https://g
 spec using the [Nimbus JOSE + JWT](https://connect2id.com/products/nimbus-jose-jwt) 
 library.
 
-Up to date with draft version: **draft-fett-selective-disclosure-jwt-00** 
+Up to date with draft version: **02** 
 
 ## Checking Out the Implementation
 

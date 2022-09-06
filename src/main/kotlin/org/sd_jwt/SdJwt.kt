@@ -180,7 +180,7 @@ fun buildJWT(claims: String, key: JWK?): String {
         }
 
         else -> {
-            throw NotImplementedError("JWT signing algorithm not implemented")
+            throw NotImplementedError("JWK signing algorithm not implemented")
         }
     }
 }
@@ -296,7 +296,7 @@ fun verifyJWTSignature(jwt: String, jwkStr: String): Boolean {
         }
 
         else -> {
-            return false
+            throw NotImplementedError("JWK signing algorithm not implemented")
         }
     }
 
