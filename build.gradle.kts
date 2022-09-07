@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "org.sd-jwt"
-version = "0.0.0-SNAPSHOT"
+version = "0.0.0"
 
 dependencies {
     testImplementation(kotlin("test"))
@@ -18,11 +18,11 @@ dependencies {
     //implementation("org.jetbrains.dokka:dokka-gradle-plugin:1.6.20")
 
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
-    implementation("com.nimbusds:nimbus-jose-jwt:9.23")
+    implementation("com.nimbusds:nimbus-jose-jwt:9.24.3")
     // For ED25519 key pairs
-    implementation("com.google.crypto.tink:tink:1.6.1")
+    implementation("com.google.crypto.tink:tink:1.7.0")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
 
     // https://mvnrepository.com/artifact/org.json/json
     implementation("org.json:json:20220320")
