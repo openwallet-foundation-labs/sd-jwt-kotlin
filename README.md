@@ -19,22 +19,9 @@ If you have Docker installed you can simply run:
 1. ``docker build -t sd-jwt .``
 2. ``docker run -it --rm sd-jwt``
 
-## Import into Android Studio Project
+## Import into Gradle Project
 
-*settings.gradle*
-```groovy
-dependencyResolutionManagement {
-    /* ... */
-    repositories {
-        /* ... */
-        maven {
-            url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
-        }
-    }
-}
-```
-
-*build.gradle* (:app)
+*build.gradle*
 ```groovy
 plugins {
     /* ... */
@@ -43,14 +30,14 @@ plugins {
 
 dependencies {
     /* ... */
-    implementation 'org.sd-jwt:sd-jwt-kotlin:0.0.0-SNAPSHOT'
+    implementation 'org.sd-jwt:sd-jwt-kotlin:0.0.0'
 
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
-    implementation 'com.nimbusds:nimbus-jose-jwt:9.23'
+    implementation("com.nimbusds:nimbus-jose-jwt:9.24.3")
     // For ED25519 key pairs
-    implementation 'com.google.crypto.tink:tink:1.6.1'
+    implementation("com.google.crypto.tink:tink:1.7.0")
 
-    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3'
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
 }
 ```
 
