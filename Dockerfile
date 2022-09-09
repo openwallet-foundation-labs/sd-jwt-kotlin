@@ -1,6 +1,8 @@
-FROM gradle:7.3.3
+FROM debian:11-slim
+
+RUN apt update && apt install -y openjdk-17-jdk
 
 WORKDIR /sd-jwt
 COPY . .
 
-CMD ./gradlew test -i
+CMD ./gradlew test --tests SdJwtKtTest -i -PossrhUsername= -PossrhPassword=

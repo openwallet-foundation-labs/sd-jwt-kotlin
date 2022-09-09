@@ -14,10 +14,17 @@ on the issuance, wallet and verifier side.
 
 ### Running the Examples
 
+#### First Possibility
+
 If you have Docker installed you can simply run:
 
 1. ``docker build -t sd-jwt .``
 2. ``docker run -it --rm sd-jwt``
+
+#### Second Possibility (Linux)
+
+1. Install Java version 17 or newer (e.g. ``sudo apt install -y openjdk-17-jdk``)
+2. Run tests with the gradle wrapper: ``./gradlew test --tests SdJwtKtTest -i -PossrhUsername= -PossrhPassword=``
 
 ## Import into Gradle Project
 
