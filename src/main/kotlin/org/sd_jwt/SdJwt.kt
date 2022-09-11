@@ -40,7 +40,10 @@ fun createSvcClaim(s: Any?, claim: Any): String {
     val salt = b64Encoder(randomness)
 
     // Encode salt and value together
-    return JSONArray().put(salt).put(claim).toString()
+    return JSONObject()
+        .put("s", salt)
+        .put("v", claim)
+        .toString()
 }
 
 /** @suppress */
@@ -192,11 +195,11 @@ fun verifyClaim(sdDigest: Any?, svc: Any): Any {
         if (createHash(svc) != sdDigest) {
             throw Exception("Could not verify credential claims (Claim $svc has wrong hash value)")
         }
-        val sVArray = JSONArray(svc)
-        if (sVArray.length() != 2) {
-            throw Exception("Could not verify credential claims (Claim $svc has wrong number of array entries)")
+        val sVObject = JSONObject(svc)
+        if (sVObject.isNull("s") || sVObject.isNull("v")) {
+            throw Exception("Could not verify credential claims (Claim $svc has wrong format)")
         }
-        return sVArray[1]
+        return sVObject["v"]
     } else {
         throw Exception("sd_digest and SVC structure is different")
     }
