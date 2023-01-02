@@ -95,7 +95,10 @@ inline fun <reified T> createCredential(
         .put("sd_hash_alg", "sha-256")
         .put("sd_digests", sdDigest)
     if (holderPubKey != null) {
-        claimsSet.put("cnf", holderPubKey.toJSONObject())
+        claimsSet.put(
+            "cnf",
+            JSONObject().put("jwk", holderPubKey.toJSONObject())
+        )
     }
 
     val sdJwtEncoded = buildJWT(claimsSet.toString(), issuerKey)
@@ -149,7 +152,7 @@ inline fun <reified T> createPresentation(
     // Check whether the bound key is the same as the key that
     // was passed to this method
     if (!body.isNull("cnf") && holderKey != null) {
-        val boundKey = JWK.parse(body.getJSONObject("cnf").toString())
+        val boundKey = JWK.parse(body.getJSONObject("cnf").getJSONObject("jwk").toString())
         if (jwkThumbprint(boundKey) != jwkThumbprint(holderKey)) {
             throw Exception("Passed holder key is not the same as in the credential")
         }
@@ -235,7 +238,7 @@ inline fun <reified T> verifyPresentation(
     // Verify SD-JWT Release
     val sdJwtRelease = "${pS[3]}.${pS[4]}.${pS[5]}"
     val holderPubKey = if (!sdJwtParsed.isNull("cnf")) {
-        sdJwtParsed.getJSONObject("cnf").toString()
+        sdJwtParsed.getJSONObject("cnf").getJSONObject("jwk").toString()
     } else {
         null
     }
