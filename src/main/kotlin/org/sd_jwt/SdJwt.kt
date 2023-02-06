@@ -24,6 +24,13 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.*
 
+val SD_DIGEST_KEY = "_sd"
+val DIGEST_ALG_KEY = "_sd_alg"
+val HOLDER_BINDING_KEY = "cnf"
+val SEPARATOR = "~"
+val DECOY_MIN = 2
+val DECOY_MAX = 5
+
 /** @suppress */
 fun createHash(value: String): String {
     val hashFunction = MessageDigest.getInstance("SHA-256")
@@ -32,26 +39,76 @@ fun createHash(value: String): String {
 }
 
 /** @suppress */
-fun createSvcClaim(s: Any?, claim: Any): String {
+fun generateSalt(): String {
     val secureRandom = SecureRandom()
-    // Generate salt
     val randomness = ByteArray(16)
     secureRandom.nextBytes(randomness)
-    val salt = b64Encoder(randomness)
-
-    // Encode salt and value together
-    return JSONObject()
-        .put("s", salt)
-        .put("v", claim)
-        .toString()
+    return b64Encoder(randomness)
 }
 
 /** @suppress */
-fun createDigest(s: Any?, claim: Any): String {
-    if (claim is String) {
-        return createHash(claim)
+fun createSdClaimEntry(key: String, value: Any, disclosures: MutableList<String>): String {
+    val disclosure = JSONArray()
+        .put(generateSalt())
+        .put(key)
+        .put(value)
+        .toString()
+    val disclosureB64 = b64Encoder(disclosure)
+    disclosures.add(disclosureB64)
+    return createHash(disclosureB64)
+}
+
+/** @suppress */
+fun createSdClaims(
+    userClaims: Any,
+    nonSdClaims: Any,
+    disclosures: MutableList<String>,
+    decoy: Boolean
+): Any {
+    if (userClaims is JSONObject && nonSdClaims is JSONObject) {
+        val secureRandom = SecureRandom()
+        val sdClaims = JSONObject()
+        val sdDigest = mutableListOf<String>()
+        for (key in userClaims.keys()) {
+            if (!nonSdClaims.isNull(key)) {
+                sdClaims.put(
+                    key,
+                    createSdClaims(userClaims.get(key), nonSdClaims.get(key), disclosures, decoy)
+                )
+            } else {
+                sdDigest.add(createSdClaimEntry(key, userClaims.get(key), disclosures))
+            }
+        }
+        if (decoy) {
+            for (i in 0 until secureRandom.nextInt(DECOY_MIN, DECOY_MAX)) {
+                sdDigest.add(createHash(generateSalt()))
+            }
+        }
+        if (sdDigest.isNotEmpty()) {
+            sdDigest.shuffle(secureRandom)
+            sdClaims.put(SD_DIGEST_KEY, sdDigest)
+        }
+        return sdClaims
+    } else if (userClaims is JSONArray) {
+        val reference = if (nonSdClaims !is JSONArray || nonSdClaims.length() == 0) {
+            JSONObject()
+        } else {
+            nonSdClaims.get(0)
+        }
+        val sdClaims = JSONArray()
+        for (i in 0 until userClaims.length()) {
+            sdClaims.put(
+                createSdClaims(
+                    userClaims.get(i),
+                    reference,
+                    disclosures,
+                    decoy
+                )
+            )
+        }
+        return sdClaims
     } else {
-        throw Exception("SVC value is not a string. Can't create digest.")
+        return userClaims
     }
 }
 
@@ -59,51 +116,48 @@ fun createDigest(s: Any?, claim: Any): String {
  * This method creates a SD-JWT credential that contains the claims
  * passed to the method and is signed with the issuer's key.
  *
- * @param claims            A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
+ * @param userClaims        A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
  * @param holderPubKey      The holder's public key if holder binding is required
  * @param issuer            URL that identifies the issuer
  * @param issuerKey         The issuer's private key to sign the SD-JWT
- * @param discloseStructure Class that has a non-null value for every object that should be disclosable separately
- * @return                  Serialized SD-JWT + SVC to send to the holder
+ * @param noneSdClaims      Class that has a non-null value for every object that should be disclosable separately
+ * @param decoy             If true, add decoy values to the SD digest arrays
+ * @return                  Serialized SD-JWT + disclosures to send to the holder
  */
 inline fun <reified T> createCredential(
-    claims: T,
+    userClaims: T,
     holderPubKey: JWK?,
     issuer: String,
     issuerKey: JWK,
-    discloseStructure: T? = null
+    noneSdClaims: T? = null,
+    decoy: Boolean = true
 ): String {
     val format = Json { encodeDefaults = true }
-    val jsonClaims = JSONObject(format.encodeToString(claims))
-    val jsonDiscloseStructure = if (discloseStructure != null) {
-        JSONObject(format.encodeToString(discloseStructure))
+    val jsonUserClaims = JSONObject(format.encodeToString(userClaims))
+    val jsonNoneSdClaims = if (noneSdClaims != null) {
+        JSONObject(format.encodeToString(noneSdClaims))
     } else {
         JSONObject()
     }
 
-    val svcClaims = walkByStructure(jsonDiscloseStructure, jsonClaims, ::createSvcClaim)
-    val svc = JSONObject().put("sd_release", svcClaims)
-    val svcEncoded = b64Encoder(svc.toString())
-
-    val sdDigest = walkByStructure(jsonDiscloseStructure, svcClaims, ::createDigest)
+    val disclosures = mutableListOf<String>()
+    val claimsSet = createSdClaims(jsonUserClaims, jsonNoneSdClaims, disclosures, decoy) as JSONObject
 
     val date = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
-    val claimsSet = JSONObject()
-        .put("iss", issuer)
+    claimsSet.put("iss", issuer)
         .put("iat", date)
         .put("exp", date + 3600 * 24)
-        .put("sd_hash_alg", "sha-256")
-        .put("sd_digests", sdDigest)
+        .put(DIGEST_ALG_KEY, "sha-256")
     if (holderPubKey != null) {
         claimsSet.put(
-            "cnf",
+            HOLDER_BINDING_KEY,
             JSONObject().put("jwk", holderPubKey.toJSONObject())
         )
     }
 
     val sdJwtEncoded = buildJWT(claimsSet.toString(), issuerKey)
 
-    return "$sdJwtEncoded.$svcEncoded"
+    return sdJwtEncoded + SEPARATOR + disclosures.joinToString(SEPARATOR)
 }
 
 /** @suppress */
