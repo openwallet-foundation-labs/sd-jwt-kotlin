@@ -55,7 +55,7 @@ inline fun <reified T>  testRoutine(
     assertEquals(sdJwtGen, sdJwtPGen)
     assertSdJwtR(sdJwtRP, sdJwtRPGen)
 
-    val verifiedCredentialGen = verifyPresentation<T>(presentationGen, testConfig.trustedIssuers,testConfig.nonce, testConfig.verifier)
+    val verifiedCredentialGen = verifyPresentation<T>(presentationGen, testConfig.trustedIssuers,testConfig.nonce, testConfig.verifier, true)
 
     println("===================== Verifier =====================")
     println("Verified credential: $verifiedCredentialGen\n")

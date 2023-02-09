@@ -74,7 +74,7 @@ internal class Debugging {
         println("====================== Wallet ======================")
         println("Generated presentation: $presentationGen")
 
-        val verifiedCredentialGen = verifyPresentation<IdCredential>(presentationGen, trustedIssuers, nonce, verifier)
+        val verifiedCredentialGen = verifyPresentation<IdCredential>(presentationGen, trustedIssuers, nonce, verifier, true)
 
         println("===================== Verifier =====================")
         println("Verified credential: $verifiedCredentialGen\n")
