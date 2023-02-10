@@ -18,8 +18,7 @@ data class TestConfig(
 )
 
 inline fun <reified T>  testRoutine(
-    expectedCredential: String,
-    expectedPresentation: String,
+    expectedClaimsKeys: List<String>,
     expectedClaims: T,
     claims: T,
     discloseStructure: T?,
@@ -38,30 +37,36 @@ inline fun <reified T>  testRoutine(
     println("====================== Issuer ======================")
     println("Generated credential: $credentialGen")
 
-    // Verify credential
-    val (sdJwtGen, svcGen) = splitCredential(credentialGen)
-    val (sdJwt, svc) = splitCredential(expectedCredential)
-    assertSVC(svc, svcGen)
-    assertSdJWT(sdJwt, sdJwtGen)
-
     val presentationGen = createPresentation(credentialGen, releaseClaims, testConfig.verifier, testConfig.nonce, testConfig.holderKey)
+
+    // Verify presentation
+    checkDisclosedDisclosures(presentationGen, expectedClaimsKeys, testConfig.holderKey != null)
 
     println("====================== Wallet ======================")
     println("Generated presentation: $presentationGen")
 
-    // Verify presentation
-    val (sdJwtPGen, sdJwtRPGen) = splitPresentation(presentationGen)
-    val (sdJwtP, sdJwtRP) = splitPresentation(expectedPresentation)
-    assertEquals(sdJwtGen, sdJwtPGen)
-    assertSdJwtR(sdJwtRP, sdJwtRPGen)
-
-    val verifiedCredentialGen = verifyPresentation<T>(presentationGen, testConfig.trustedIssuers,testConfig.nonce, testConfig.verifier, true)
+    val verifiedCredentialGen = verifyPresentation<T>(presentationGen, testConfig.trustedIssuers,testConfig.nonce, testConfig.verifier,
+        holderPubKey != null
+    )
 
     println("===================== Verifier =====================")
     println("Verified credential: $verifiedCredentialGen\n")
 
     // Verify parsed credential
     assertEquals(expectedClaims, verifiedCredentialGen)
+}
+
+
+
+fun checkDisclosedDisclosures(presentation: String, expectedClaimsKeys: List<String>, holderBinding: Boolean) {
+    val presentationParts = presentation.split(SEPARATOR)
+    assertEquals(expectedClaimsKeys.size, presentationParts.size - 1 - booleanToInt(holderBinding))
+    for (disclosure in presentationParts.subList(1, presentationParts.size - booleanToInt(holderBinding))) {
+        val disclosureJson = JSONArray(b64Decode(disclosure))
+        if (!expectedClaimsKeys.contains(disclosureJson[1])) {
+            throw Exception("Unexpected disclosure: $disclosure")
+        }
+    }
 }
 
 fun compareSvcClaim(s1: Any?, s2: Any) {

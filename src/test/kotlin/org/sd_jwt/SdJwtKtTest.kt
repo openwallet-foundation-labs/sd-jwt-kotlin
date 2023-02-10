@@ -36,15 +36,13 @@ internal class SdJwtKtTest {
     fun testSimpleCredential() {
         val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, null, "Simple Credential")
 
-        val expectedCredential =
-            "eyJraWQiOiJJc3N1ZXJLZXkiLCJhbGciOiJFZERTQSJ9.eyJzZF9oYXNoX2FsZyI6InNoYS0yNTYiLCJpc3MiOiJodHRwOi8vaXNzdWVyLmV4YW1wbGUuY29tIiwiZXhwIjoxNjYxNTIxMjE3LCJpYXQiOjE2NjE0MzQ4MTcsInNkX2RpZ2VzdHMiOnsiYiI6IjhXMjVTZTNFa0RPYlFsdUJnWWRLQk90Qkh2TExJVDJvU2lrZDdHaDFfbXMiLCJnaXZlbl9uYW1lIjoiVG5Mb2F0bW1HUnUxSTlqbjN3ZUI0eVNNNXBQd3N3dXp2bFZkQzc4bDVRcyIsImZhbWlseV9uYW1lIjoibmtMdWo3TFNsTWRXRFVPNl81YUc3SzNyNkV4eEN0cURsdXpnU1Q3cG8tYyIsImVtYWlsIjoiUFdfVzFxckExZjhEa0tTbG8wTDk4aUtReHVfNW1FYnUwZmhVSE9jamgwYyIsImFnZSI6ImQxV2ZTSlNhUWlxaWJqVG9KUWFPNEduaEo1RjZuMDRFZC1GbGNfa25JdHMifX0.IkWYy2G79AEFaI7bHQpGuFCxgKPgYJWz5r1PbTAmxX3J7ej8lvI0RfNG76ULu1oGy7ooVJX7B4QzH84b7Gf4Dw.eyJzZF9yZWxlYXNlIjp7ImIiOiJbXCJjRW9BYWYzN21QSFYzUjlLVGJyajd3XCIsZmFsc2VdIiwiZ2l2ZW5fbmFtZSI6IltcIi10aThjWTlJSlBoSkppVjAzYjdjYUFcIixcIkFsaWNlXCJdIiwiZmFtaWx5X25hbWUiOiJbXCJqaVVETUhub0dXeDd2SGoxVnB6Mk5BXCIsXCJXb25kZXJsYW5kXCJdIiwiZW1haWwiOiJbXCJ3QUg0WFRud0t5bkFDNzZ3dy1pZXN3XCIsXCJhbGljZUBleGFtcGxlLmNvbVwiXSIsImFnZSI6IltcInJFZmlfYXNhNEh6d0tubktHbjRXYVFcIiwyMV0ifX0"
-        val expectedPresentation =
-            "eyJraWQiOiJJc3N1ZXJLZXkiLCJhbGciOiJFZERTQSJ9.eyJzZF9oYXNoX2FsZyI6InNoYS0yNTYiLCJpc3MiOiJodHRwOi8vaXNzdWVyLmV4YW1wbGUuY29tIiwiZXhwIjoxNjYxNjA1NjIxLCJpYXQiOjE2NjE1MTkyMjEsInNkX2RpZ2VzdHMiOnsiYiI6IlAzektnc1FQa1c2ZGRVTDBmMDNQLVRxa2p4aU81cFhMZFhEWXQ0NWhZRzQiLCJnaXZlbl9uYW1lIjoiTnozZHdpSGFjSWlSRUxaRnhyd2NtSm9ncEhTTFNNU3luaXdVdFNBd2p0SSIsImZhbWlseV9uYW1lIjoicmh6Q0VET0cwQVNKc09pWmRWbVFSZEhnRTNIZUpqaGl4U25SU2dPeVNTayIsImVtYWlsIjoidjc3Y2RUY1pCTWZlaTVfVEVENW1VUEFDTHpjWFI2UTBJZUpraVdpZk9OVSIsImFnZSI6Iko0VkM4Ti0tb0ZybFhySmlSdXRTXzBIWXFUdHZqTkFwcEVxRGRRdkpIU0EifX0.cVwk7mets4E6I6aQ8waP1acyBkvPtqer7Wz3IrBupocVYY17NAo0rNK33H57Ii9A9ybumC_T_52L_xw2Bd-oBA.eyJhbGciOiJub25lIn0.eyJzZF9yZWxlYXNlIjp7ImdpdmVuX25hbWUiOiJbXCJ6Q1RIMFp0MkE3Y2hWMXNuVGtIdG5nXCIsXCJBbGljZVwiXSIsImVtYWlsIjoiW1wiRTAydnFjd2UxekJ2OWVBc1gzNFlYZ1wiLFwiYWxpY2VAZXhhbXBsZS5jb21cIl0iLCJhZ2UiOiJbXCIzdDdNaWtqUWFsX3l4VnFSelgyNV93XCIsMjFdIn0sImF1ZCI6Imh0dHA6Ly92ZXJpZmllci5leGFtcGxlLmNvbSIsIm5vbmNlIjoiMTIzNDUifQ."
         val claims = SimpleTestCredential("Alice", "Wonderland", "alice@example.com", false, 21)
         val releaseClaims = SimpleTestCredential(givenName = "", email = "", age = 0)
         val expectedClaims = SimpleTestCredential(givenName = "Alice", email = "alice@example.com", age = 21)
 
-        testRoutine(expectedCredential, expectedPresentation, expectedClaims, claims, null, releaseClaims, testConfig)
+        val expectedClaimsKeys = listOf("given_name", "email", "age")
+
+        testRoutine(expectedClaimsKeys, expectedClaims, claims, null, releaseClaims, testConfig)
     }
 
     @Serializable
@@ -71,11 +69,7 @@ internal class SdJwtKtTest {
         val testConfig =
             TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Advanced Credential")
 
-        val expectedCredential =
-            "eyJraWQiOiJJc3N1ZXJLZXkiLCJhbGciOiJFZERTQSJ9.eyJzZF9oYXNoX2FsZyI6InNoYS0yNTYiLCJpc3MiOiJodHRwOi8vaXNzdWVyLmV4YW1wbGUuY29tIiwiY25mIjp7IngiOiJzNmdWTElOTGNDR2hHRURUZl92MXpNbHVMWmNYajRHT1hBZlFsT1daTTlRIiwia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsImtpZCI6IkhvbGRlcktleSJ9LCJleHAiOjE2NjE2MDc3MDUsImlhdCI6MTY2MTUyMTMwNSwic2RfZGlnZXN0cyI6eyJiaXJ0aGRheSI6IjBrSGgyMVhwRDF1OXBELW9qel9lVzhqaEcyM1JmcXNneXZreUpCdmdubGsiLCJhZGRyZXNzIjoiN0NrU085QzV2SzJ3c2JMTjJMTVRKQXI4RjFCRXBQMnNIZTdyTjBfRXBPUSIsIm5pY2tuYW1lcyI6ImIyWTlaUkFUMUFUck5aaE4xeGtxRElwcmdVVWREaldHOEo3TUtKYmVkV3ciLCJnaXZlbl9uYW1lIjoibU5oSW9JaUZDR2ZRSWJCeG1wY0hlU2lKZHRMRTItS3oxRUh3dHRwcmxkNCIsImZhbWlseV9uYW1lIjoick90NkxEcFJhU25fdG9CeHM4dXJsd21vUmlTeXAyWjlBM04zWmtTMGxscyIsImVtYWlsIjoiVzJxa1ZWZFdGX3BWTHc5RDVKNWJLVEN6VHl1ZllPalU4aUx0RFJ4OHdPWSJ9fQ.hvY39dsHUp2BaubN4mU4oBh6fH-jLhuHmTtGrjt-bQr4v0C8xO1uVRzT6pRkS77DKl1GT0WA69lOhiX7lh8bDw.eyJzZF9yZWxlYXNlIjp7ImJpcnRoZGF5IjoiW1wibGNoYXJPT2theFhsNDJ5Q09PYlNqd1wiLFwiMTk0MC0wMS0wMVwiXSIsImFkZHJlc3MiOiJbXCJDaWd4NGt0ZnU5ZHJtcVBaaGJod1JRXCIse1wic3RyZWV0X2FkZHJlc3NcIjpcIjEyMyBNYWluIFN0XCIsXCJjb3VudHJ5XCI6XCJVU1wiLFwibG9jYWxpdHlcIjpcIkFueXRvd25cIixcInJlZ2lvblwiOlwiQW55c3RhdGVcIixcInppcF9jb2RlXCI6MTIzNDU2fV0iLCJuaWNrbmFtZXMiOiJbXCJiYTBIUlNVRGg0UzNtWnlSYzlZSi1BXCIsW1wiQVwiLFwiQlwiXV0iLCJnaXZlbl9uYW1lIjoiW1wiNlNobWRJcTBuOFF4TlZEdXJ3UDkyZ1wiLFwiQWxpY2VcIl0iLCJmYW1pbHlfbmFtZSI6IltcIldXbTBKTFkzbXM5TnB2ZnAxckRSTmdcIixcIldvbmRlcmxhbmRcIl0iLCJlbWFpbCI6IltcIkRWNTVEWW53TkNSR2x5TTFxQVI4TGdcIixcImFsaWNlQGV4YW1wbGUuY29tXCJdIn19"
-        val expectedPresentation =
-            "eyJraWQiOiJJc3N1ZXJLZXkiLCJhbGciOiJFZERTQSJ9.eyJzZF9oYXNoX2FsZyI6InNoYS0yNTYiLCJpc3MiOiJodHRwOi8vaXNzdWVyLmV4YW1wbGUuY29tIiwiY25mIjp7IngiOiJzNmdWTElOTGNDR2hHRURUZl92MXpNbHVMWmNYajRHT1hBZlFsT1daTTlRIiwia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsImtpZCI6IkhvbGRlcktleSJ9LCJleHAiOjE2NjE2MDc3MDUsImlhdCI6MTY2MTUyMTMwNSwic2RfZGlnZXN0cyI6eyJiaXJ0aGRheSI6IjBrSGgyMVhwRDF1OXBELW9qel9lVzhqaEcyM1JmcXNneXZreUpCdmdubGsiLCJhZGRyZXNzIjoiN0NrU085QzV2SzJ3c2JMTjJMTVRKQXI4RjFCRXBQMnNIZTdyTjBfRXBPUSIsIm5pY2tuYW1lcyI6ImIyWTlaUkFUMUFUck5aaE4xeGtxRElwcmdVVWREaldHOEo3TUtKYmVkV3ciLCJnaXZlbl9uYW1lIjoibU5oSW9JaUZDR2ZRSWJCeG1wY0hlU2lKZHRMRTItS3oxRUh3dHRwcmxkNCIsImZhbWlseV9uYW1lIjoick90NkxEcFJhU25fdG9CeHM4dXJsd21vUmlTeXAyWjlBM04zWmtTMGxscyIsImVtYWlsIjoiVzJxa1ZWZFdGX3BWTHc5RDVKNWJLVEN6VHl1ZllPalU4aUx0RFJ4OHdPWSJ9fQ.hvY39dsHUp2BaubN4mU4oBh6fH-jLhuHmTtGrjt-bQr4v0C8xO1uVRzT6pRkS77DKl1GT0WA69lOhiX7lh8bDw.eyJraWQiOiJIb2xkZXJLZXkiLCJhbGciOiJFZERTQSJ9.eyJzZF9yZWxlYXNlIjp7ImFkZHJlc3MiOiJbXCJDaWd4NGt0ZnU5ZHJtcVBaaGJod1JRXCIse1wic3RyZWV0X2FkZHJlc3NcIjpcIjEyMyBNYWluIFN0XCIsXCJjb3VudHJ5XCI6XCJVU1wiLFwibG9jYWxpdHlcIjpcIkFueXRvd25cIixcInJlZ2lvblwiOlwiQW55c3RhdGVcIixcInppcF9jb2RlXCI6MTIzNDU2fV0iLCJuaWNrbmFtZXMiOiJbXCJiYTBIUlNVRGg0UzNtWnlSYzlZSi1BXCIsW1wiQVwiLFwiQlwiXV0iLCJnaXZlbl9uYW1lIjoiW1wiNlNobWRJcTBuOFF4TlZEdXJ3UDkyZ1wiLFwiQWxpY2VcIl0iLCJmYW1pbHlfbmFtZSI6IltcIldXbTBKTFkzbXM5TnB2ZnAxckRSTmdcIixcIldvbmRlcmxhbmRcIl0ifSwiYXVkIjoiaHR0cDovL3ZlcmlmaWVyLmV4YW1wbGUuY29tIiwibm9uY2UiOiIxMjM0NSJ9.-pj_KrrjL4WzSyTA53dIf8wOnd26qBSzwXZzzt9emb7mj1iBK3N7OIB9mXp2K0cHtvvCwohI2ciJDWIuEG8DCA"
-        val claims = IdCredential(
+       val claims = IdCredential(
             "Alice",
             "Wonderland",
             "alice@example.com",
@@ -90,8 +84,9 @@ internal class SdJwtKtTest {
             nicknames = setOf("A", "B"),
             address = Address("123 Main St", "Anytown", "Anystate", "US", 123456)
         )
+        val expectedClaimsKeys = listOf("given_name", "family_name", "nicknames", "address")
 
-        testRoutine(expectedCredential, expectedPresentation, expectedClaims, claims, null, releaseClaims, testConfig)
+        testRoutine(expectedClaimsKeys, expectedClaims, claims, null, releaseClaims, testConfig)
     }
 
     @Test
@@ -122,9 +117,17 @@ internal class SdJwtKtTest {
             address = Address(streetAddress = "123 Main St", locality = "Anytown", zipCode = 123456)
         )
 
+        val expectedClaimsKeys = listOf(
+            "given_name",
+            "family_name",
+            "nicknames",
+            "street_address",
+            "locality",
+            "zip_code"
+        )
+
         testRoutine(
-            expectedCredential,
-            expectedPresentation,
+            expectedClaimsKeys,
             expectedClaims,
             claims,
             discloseStructure,

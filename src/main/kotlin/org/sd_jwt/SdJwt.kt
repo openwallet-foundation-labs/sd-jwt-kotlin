@@ -172,7 +172,12 @@ fun parseDisclosures(credentialParts: List<String>, endOffset: Int = 0): HashMap
 }
 
 /** @suppress */
-fun findDisclosures(credentialClaims: Any, revealeClaims: Any, disclosures: HashMap<String, String>, findAll: Boolean = false): List<String> {
+fun findDisclosures(
+    credentialClaims: Any,
+    revealeClaims: Any,
+    disclosures: HashMap<String, String>,
+    findAll: Boolean = false
+): List<String> {
     val revealeDisclosures = mutableListOf<String>()
     if (credentialClaims is JSONObject && (revealeClaims is JSONObject || findAll)) {
         for (key in credentialClaims.keys()) {
@@ -187,7 +192,14 @@ fun findDisclosures(credentialClaims: Any, revealeClaims: Any, disclosures: Hash
                     }
                 }
             } else if ((revealeClaims as JSONObject).has(key) || findAll) {
-                revealeDisclosures.addAll(findDisclosures(credentialClaims.get(key), if (!findAll) revealeClaims.get(key) else revealeClaims, disclosures, findAll))
+                revealeDisclosures.addAll(
+                    findDisclosures(
+                        credentialClaims.get(key),
+                        if (!findAll) revealeClaims.get(key) else revealeClaims,
+                        disclosures,
+                        findAll
+                    )
+                )
             }
         }
     } else if (credentialClaims is JSONArray) {
@@ -206,6 +218,17 @@ fun findDisclosures(credentialClaims: Any, revealeClaims: Any, disclosures: Hash
 /** @suppress */
 fun parseJWT(jwt: String): JSONObject {
     return JSONObject(SignedJWT.parse(jwt).payload.toJSONObject())
+}
+
+/**
+ * This method checks if every disclosure has a matching digest in the SD-JWT.
+ */
+fun checkDisclosuresMatchingDigest(sdJwt: JSONObject, disclosureMap: HashMap<String, String>) {
+    val allDisclosures = findDisclosures(sdJwt, JSONObject(), disclosureMap, true)
+    val credentialDisclosureList = disclosureMap.values
+    if (!allDisclosures.containsAll(credentialDisclosureList) || !credentialDisclosureList.containsAll(allDisclosures)) {
+        throw Exception("Digest and disclosure values do not match")
+    }
 }
 
 /**
@@ -233,26 +256,21 @@ inline fun <reified T> createPresentation(
     val disclosureMap = parseDisclosures(credentialParts)
     val releaseClaimsParsed = JSONObject(Json.encodeToString(releaseClaims))
 
-    // Check if every disclosure has a matching digest in the SD-JWT
-    val allDisclosures = findDisclosures(sdJwt, releaseClaimsParsed, disclosureMap, true)
-    val credentialDisclosureList = disclosureMap.values
-    if (!allDisclosures.containsAll(credentialDisclosureList) || !credentialDisclosureList.containsAll(allDisclosures)) {
-        throw Exception("Digest and disclosure values do not match")
-    }
+    checkDisclosuresMatchingDigest(sdJwt, disclosureMap)
 
     val releaseDisclosures = findDisclosures(sdJwt, releaseClaimsParsed, disclosureMap)
     var presentation = credentialParts[0] + SEPARATOR + releaseDisclosures.joinToString(SEPARATOR)
 
     // Check if credential has holder binding. If so throw an exception
     // if no holder key is passed to the method.
-    if (!sdJwt.isNull("cnf") && holderKey == null) {
+    if (!sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey == null) {
         throw Exception("SD-JWT has holder binding. SD-JWT-R must be signed with the holder key.")
     }
 
     // Check whether the bound key is the same as the key that
     // was passed to this method
-    if (!sdJwt.isNull("cnf") && holderKey != null) {
-        val boundKey = JWK.parse(sdJwt.getJSONObject("cnf").getJSONObject("jwk").toString())
+    if (!sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
+        val boundKey = JWK.parse(sdJwt.getJSONObject(HOLDER_BINDING_KEY).getJSONObject("jwk").toString())
         if (jwkThumbprint(boundKey) != jwkThumbprint(holderKey)) {
             throw Exception("Passed holder key is not the same as in the credential")
         }
@@ -324,7 +342,6 @@ fun verifyAndBuildCredential(credentialClaims: Any, disclosures: HashMap<String,
 }
 
 
-
 /**
  * The method takes a serialized SD-JWT + SD-JWT Release, parses it and checks
  * the validity of the credential. The disclosed claims are returned in an object
@@ -356,10 +373,14 @@ inline fun <reified T> verifyPresentation(
         verifyJwtClaims(sdJwtReleaseParsed, expectedNonce, expectedAud)
     }
 
-    val disclosureMap = parseDisclosures(presentationSplit, 1)
+    val disclosureMap = parseDisclosures(presentationSplit, booleanToInt(holderBinding))
+
+    checkDisclosuresMatchingDigest(sdJwtParsed, disclosureMap)
+
     val sdClaimsParsed = verifyAndBuildCredential(sdJwtParsed, disclosureMap)
 
-    return Json.decodeFromString(sdClaimsParsed.toString())
+    val format = Json { ignoreUnknownKeys = true }
+    return format.decodeFromString(sdClaimsParsed.toString())
 }
 
 /** @suppress */
@@ -384,10 +405,10 @@ fun verifySDJWT(jwt: String, trustedIssuer: Map<String, String>): JSONObject {
 
 /** @suppress */
 fun verifyHolderBindingJwt(jwt: String, sdJwtParsed: JSONObject): JSONObject {
-    val holderPubKey = if (!sdJwtParsed.isNull("cnf")) {
-        sdJwtParsed.getJSONObject("cnf").getJSONObject("jwk").toString()
+    val holderPubKey = if (!sdJwtParsed.isNull(HOLDER_BINDING_KEY)) {
+        sdJwtParsed.getJSONObject(HOLDER_BINDING_KEY).getJSONObject("jwk").toString()
     } else {
-        throw Exception("Holder binding is missing in SD-JWT. Expected cnf claim with a JWK.")
+        throw Exception("Holder binding is missing in SD-JWT. Expected $HOLDER_BINDING_KEY claim with a JWK.")
     }
 
     if (verifyJWTSignature(jwt, holderPubKey)) {
@@ -497,3 +518,6 @@ fun b64Decode(str: String?): String {
 fun jwkThumbprint(jwk: JWK): String {
     return b64Encoder(jwk.computeThumbprint().decode())
 }
+
+/** @suppress */
+fun booleanToInt(b: Boolean) = if (b) 1 else 0

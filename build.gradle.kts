@@ -1,11 +1,11 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.7.10"
-    kotlin("plugin.serialization") version "1.7.10"
+    kotlin("jvm") version "1.8.10"
+    kotlin("plugin.serialization") version "1.8.10"
     application
     `maven-publish`
-    id("org.jetbrains.dokka") version "1.7.10"
+    id("org.jetbrains.dokka") version "1.7.20"
     signing
 }
 
@@ -18,14 +18,14 @@ dependencies {
     //implementation("org.jetbrains.dokka:dokka-gradle-plugin:1.6.20")
 
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
-    implementation("com.nimbusds:nimbus-jose-jwt:9.24.3")
+    implementation("com.nimbusds:nimbus-jose-jwt:9.30.1")
     // For ED25519 key pairs
     implementation("com.google.crypto.tink:tink:1.7.0")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
 
     // https://mvnrepository.com/artifact/org.json/json
-    implementation("org.json:json:20220320")
+    implementation("org.json:json:20220924")
 }
 
 tasks.test {
