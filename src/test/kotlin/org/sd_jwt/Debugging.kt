@@ -62,7 +62,7 @@ internal class Debugging {
 
         val holderPubKey = holderKey?.toPublicJWK()
 
-        val credentialGen = createCredential(claims, holderPubKey, issuer, issuerKey, discloseStructure)
+        val credentialGen = createCredential(claims, issuer, issuerKey, holderPubKey, discloseStructure)
 
         println("====================== Issuer ======================")
         println("Generated credential: $credentialGen")
@@ -78,6 +78,36 @@ internal class Debugging {
 
         println("===================== Verifier =====================")
         println("Verified credential: $verifiedCredentialGen\n")
+    }
+
+
+    @Serializable
+    private data class SimpleTestCredential(
+        @SerialName("given_name") val givenName: String? = null,
+        @SerialName("family_name") val familyName: String? = null,
+        val email: String? = null,
+        val b: Boolean? = null,
+        val age: Int? = null
+    )
+
+    @Test
+    fun minimal() {
+        val claims = SimpleTestCredential("Alice", "Wonderland", "alice@example.com", false, 21)
+        val credential = createCredential(claims, issuer, issuerKey)
+
+        println("====================== Issuer ======================")
+        println("Credential: $credential")
+
+        val releaseClaims = SimpleTestCredential(givenName = "",  email = "", age = 0) // Non-null claims will be revealed
+        val presentation = createPresentation(credential, releaseClaims)
+
+        println("====================== Wallet ======================")
+        println("Presentation: $presentation")
+
+        val verifiedSimpleTestCredential = verifyPresentation<SimpleTestCredential>(presentation, trustedIssuers, verifyHolderBinding = false)
+
+        println("===================== Verifier =====================")
+        println("Verified credential: $verifiedSimpleTestCredential\n")
     }
 
 

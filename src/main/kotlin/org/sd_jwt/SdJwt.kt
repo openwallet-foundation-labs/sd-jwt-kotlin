@@ -2,8 +2,7 @@ package org.sd_jwt
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSObject
-import com.nimbusds.jose.Payload
+import com.nimbusds.jose.PlainHeader
 import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.Ed25519Verifier
 import com.nimbusds.jose.crypto.RSASSASigner
@@ -12,6 +11,8 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyType
 import com.nimbusds.jose.jwk.OctetKeyPair
 import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.PlainJWT
 import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
@@ -20,14 +21,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.*
 import kotlin.collections.HashMap
 
+/** @suppress */
 val SD_DIGEST_KEY = "_sd"
+/** @suppress */
 val DIGEST_ALG_KEY = "_sd_alg"
+/** @suppress */
 val HOLDER_BINDING_KEY = "cnf"
+/** @suppress */
 val SEPARATOR = "~"
 val DECOY_MIN = 2
 val DECOY_MAX = 5
@@ -62,19 +68,19 @@ fun createSdClaimEntry(key: String, value: Any, disclosures: MutableList<String>
 /** @suppress */
 fun createSdClaims(
     userClaims: Any,
-    nonSdClaims: Any,
+    discloseStructure: Any,
     disclosures: MutableList<String>,
     decoy: Boolean
 ): Any {
-    if (userClaims is JSONObject && nonSdClaims is JSONObject) {
+    if (userClaims is JSONObject && discloseStructure is JSONObject) {
         val secureRandom = SecureRandom()
         val sdClaims = JSONObject()
         val sdDigest = mutableListOf<String>()
         for (key in userClaims.keys()) {
-            if (!nonSdClaims.isNull(key)) {
+            if (!discloseStructure.isNull(key)) {
                 sdClaims.put(
                     key,
-                    createSdClaims(userClaims.get(key), nonSdClaims.get(key), disclosures, decoy)
+                    createSdClaims(userClaims.get(key), discloseStructure.get(key), disclosures, decoy)
                 )
             } else {
                 sdDigest.add(createSdClaimEntry(key, userClaims.get(key), disclosures))
@@ -91,10 +97,10 @@ fun createSdClaims(
         }
         return sdClaims
     } else if (userClaims is JSONArray) {
-        val reference = if (nonSdClaims !is JSONArray || nonSdClaims.length() == 0) {
+        val reference = if (discloseStructure !is JSONArray || discloseStructure.length() == 0) {
             JSONObject()
         } else {
-            nonSdClaims.get(0)
+            discloseStructure.get(0)
         }
         val sdClaims = JSONArray()
         for (i in 0 until userClaims.length()) {
@@ -118,57 +124,75 @@ fun createSdClaims(
  * passed to the method and is signed with the issuer's key.
  *
  * @param userClaims        A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
- * @param holderPubKey      The holder's public key if holder binding is required
  * @param issuer            URL that identifies the issuer
  * @param issuerKey         The issuer's private key to sign the SD-JWT
- * @param noneSdClaims      Class that has a non-null value for every object that should be disclosable separately
- * @param decoy             If true, add decoy values to the SD digest arrays
+ * @param holderPubKey      Optional: The holder's public key if holder binding is required
+ * @param discloseStructure Optional: Class that has a non-null value for each object that should be disclosable separately
+ * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
  * @return                  Serialized SD-JWT + disclosures to send to the holder
  */
 inline fun <reified T> createCredential(
     userClaims: T,
-    holderPubKey: JWK?,
     issuer: String,
     issuerKey: JWK,
-    noneSdClaims: T? = null,
+    holderPubKey: JWK? = null,
+    discloseStructure: T? = null,
     decoy: Boolean = true
 ): String {
     val format = Json { encodeDefaults = true }
     val jsonUserClaims = JSONObject(format.encodeToString(userClaims))
-    val jsonNoneSdClaims = if (noneSdClaims != null) {
-        JSONObject(format.encodeToString(noneSdClaims))
+    val jsonDiscloseStructure = if (discloseStructure != null) {
+        JSONObject(format.encodeToString(discloseStructure))
     } else {
         JSONObject()
     }
 
     val disclosures = mutableListOf<String>()
-    val claimsSet = createSdClaims(jsonUserClaims, jsonNoneSdClaims, disclosures, decoy) as JSONObject
+    val sdClaimsSet = createSdClaims(jsonUserClaims, jsonDiscloseStructure, disclosures, decoy) as JSONObject
 
-    val date = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
-    claimsSet.put("iss", issuer)
-        .put("iat", date)
-        .put("exp", date + 3600 * 24)
-        .put(DIGEST_ALG_KEY, "sha-256")
+    val sdJwtPayload = JWTClaimsSet.Builder()
+        .issuer(issuer)
+        .issueTime(Date.from(Instant.now()))
+        .expirationTime(Date.from(Instant.now().plusSeconds(3600 * 24)))
+        .claim(DIGEST_ALG_KEY, "sha-256")
+
+    for (key in sdClaimsSet.keys()) {
+        if (sdClaimsSet.get(key) is JSONObject) {
+            sdJwtPayload.claim(key, sdClaimsSet.getJSONObject(key).toMap())
+        } else if (sdClaimsSet.get(key) is JSONArray) {
+            sdJwtPayload.claim(key, sdClaimsSet.getJSONArray(key).toList())
+        } else {
+            sdJwtPayload.claim(key, sdClaimsSet.get(key))
+        }
+    }
+
     if (holderPubKey != null) {
-        claimsSet.put(
+        sdJwtPayload.claim(
             HOLDER_BINDING_KEY,
-            JSONObject().put("jwk", holderPubKey.toJSONObject())
+            JSONObject().put("jwk", holderPubKey.toJSONObject()).toMap()
         )
     }
 
-    val sdJwtEncoded = buildJWT(claimsSet.toString(), issuerKey)
+    val sdJwtEncoded = buildJWT(sdJwtPayload.build(), issuerKey)
 
     return sdJwtEncoded + SEPARATOR + disclosures.joinToString(SEPARATOR)
 }
 
 
 /** @suppress */
-fun parseDisclosures(credentialParts: List<String>, endOffset: Int = 0): HashMap<String, String> {
+fun parseDisclosures(credentialParts: List<String>): Pair<HashMap<String, String>, String?> {
     val disclosures = HashMap<String, String>()
-    for (disclosure in credentialParts.subList(1, credentialParts.size - endOffset)) {
-        disclosures[createHash(disclosure)] = disclosure
+    var holderJwt: String? = null
+    for (disclosure in credentialParts.subList(1, credentialParts.size)) {
+        if (!disclosure.contains(".")) {
+            disclosures[createHash(disclosure)] = disclosure
+        } else if (disclosure.contains(".") && disclosure == credentialParts.last()) {
+            holderJwt = disclosure
+        } else {
+            throw Exception("Set of disclosures contain a JWT not located at the last position.")
+        }
     }
-    return disclosures
+    return Pair(disclosures, holderJwt)
 }
 
 /** @suppress */
@@ -215,12 +239,8 @@ fun findDisclosures(
     return revealeDisclosures
 }
 
-/** @suppress */
-fun parseJWT(jwt: String): JSONObject {
-    return JSONObject(SignedJWT.parse(jwt).payload.toJSONObject())
-}
-
 /**
+ * @suppress
  * This method checks if every disclosure has a matching digest in the SD-JWT.
  */
 fun checkDisclosuresMatchingDigest(sdJwt: JSONObject, disclosureMap: HashMap<String, String>) {
@@ -237,23 +257,23 @@ fun checkDisclosuresMatchingDigest(sdJwt: JSONObject, disclosureMap: HashMap<Str
  *
  * @param credential    A string containing the SD-JWT and its disclosures concatenated by a period character
  * @param releaseClaims An object of the same class as the credential and every claim that should be disclosed contains a non-null value
- * @param audience      The value of the "aud" claim in the holder binding JWT
- * @param nonce         The value of the "nonce" claim in the holder binding JWT
- * @param holderKey     If holder binding is required, you have to pass the private key, otherwise you can just pass null
- * @return              Serialized SD-JWT + disclosures [+ holder binding JWT] concatenated by a ~ character
+ * @param audience      Optional: The value of the "aud" claim in the holder JWT
+ * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
+ * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
+ * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
  */
 inline fun <reified T> createPresentation(
     credential: String,
     releaseClaims: T,
-    audience: String,
-    nonce: String,
-    holderKey: JWK?
+    audience: String? = null,
+    nonce: String? = null,
+    holderKey: JWK? = null,
 ): String {
     val credentialParts = credential.split(SEPARATOR)
 
     // Parse credential into formats suitable to process it
     val sdJwt = parseJWT(credentialParts[0])
-    val disclosureMap = parseDisclosures(credentialParts)
+    val (disclosureMap, _) = parseDisclosures(credentialParts)
     val releaseClaimsParsed = JSONObject(Json.encodeToString(releaseClaims))
 
     checkDisclosuresMatchingDigest(sdJwt, disclosureMap)
@@ -261,10 +281,10 @@ inline fun <reified T> createPresentation(
     val releaseDisclosures = findDisclosures(sdJwt, releaseClaimsParsed, disclosureMap)
     var presentation = credentialParts[0] + SEPARATOR + releaseDisclosures.joinToString(SEPARATOR)
 
-    // Check if credential has holder binding. If so throw an exception
-    // if no holder key is passed to the method.
-    if (!sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey == null) {
-        throw Exception("SD-JWT has holder binding. SD-JWT-R must be signed with the holder key.")
+    // Throw an exception if the holderKey is not null but there is no
+    // key referenced in the credential.
+    if (sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
+        throw Exception("SD-JWT has no holder binding and the holderKey is not null. Presentation would be signed with a key not referenced in the credential.")
     }
 
     // Check whether the bound key is the same as the key that
@@ -276,13 +296,13 @@ inline fun <reified T> createPresentation(
         }
     }
 
-    if (holderKey != null) {
-        val date = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
-        val holderBindingJwt = JSONObject()
-        holderBindingJwt.put("nonce", nonce)
-        holderBindingJwt.put("aud", audience)
-        holderBindingJwt.put("iat", date)
-        presentation += SEPARATOR + buildJWT(holderBindingJwt.toString(), holderKey)
+    if (nonce != null || audience != null) {
+        val holderBindingJwtPayload = JWTClaimsSet.Builder()
+            .audience(audience)
+            .issueTime(Date.from(Instant.now()))
+            .claim("nonce", nonce)
+            .build()
+        presentation += SEPARATOR + buildJWT(holderBindingJwtPayload, holderKey)
     }
 
     return presentation
@@ -290,18 +310,25 @@ inline fun <reified T> createPresentation(
 
 
 /** @suppress */
-fun buildJWT(claims: String, key: JWK): String {
+fun buildJWT(claims: JWTClaimsSet, key: JWK?): String {
+    if (key == null) {
+        val header = PlainHeader()
+        return PlainJWT(header, claims).serialize()
+    }
+
     return when (key.keyType) {
         KeyType.OKP -> {
             val signer = Ed25519Signer(key as OctetKeyPair)
-            val signedSdJwt = JWSObject(JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(key.keyID).build(), Payload(claims))
+            val header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(key.keyID).build()
+            val signedSdJwt = SignedJWT(header, claims)
             signedSdJwt.sign(signer)
             signedSdJwt.serialize()
         }
 
         KeyType.RSA -> {
             val signer = RSASSASigner(key as RSAKey)
-            val signedSdJwt = JWSObject(JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID).build(), Payload(claims))
+            val header = JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID).build()
+            val signedSdJwt = SignedJWT(header, claims)
             signedSdJwt.sign(signer)
             signedSdJwt.serialize()
         }
@@ -343,38 +370,47 @@ fun verifyAndBuildCredential(credentialClaims: Any, disclosures: HashMap<String,
 
 
 /**
- * The method takes a serialized SD-JWT + SD-JWT Release, parses it and checks
+ * The method takes a serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb;, parses it and checks
  * the validity of the credential. The disclosed claims are returned in an object
  * of the credential class.
  *
- * @param presentation  Serialized presentation containing the SD-JWT and SD-JWT Release
- * @param trustedIssuer A map that contains issuer urls and the corresponding JWKs in JSON format serialized as strings
- * @param expectedNonce The value that is expected in the nonce claim of the SD-JWT Release
- * @param expectedAud   The value that is expected in the aud claim of the SD-JWT Release
- * @param holderBinding If the verifier policy requires holder binding, the presentation must contain a holder binding JWT
- * @return              An object of the class filled with the disclosed claims
+ * @param presentation          Serialized presentation containing the SD-JWT and the disclosures
+ * @param trustedIssuer         A map that contains issuer urls and the corresponding JWKs in JSON format serialized as strings
+ * @param expectedNonce         Optional: The value that is expected in the nonce claim of the holder JWT
+ * @param expectedAud           Optional: The value that is expected in the aud claim of the holder JWT
+ * @param verifyHolderBinding   Optional: Determine whether holder binding is required by the verifier's policy (default: true)
+ * @return                      An object of the credential class filled with the disclosed claims
  */
 inline fun <reified T> verifyPresentation(
     presentation: String,
     trustedIssuer: Map<String, String>,
-    expectedNonce: String,
-    expectedAud: String,
-    holderBinding: Boolean,
+    expectedNonce: String? = null,
+    expectedAud: String? = null,
+    verifyHolderBinding: Boolean = true,
 ): T {
     val presentationSplit = presentation.split(SEPARATOR)
+    val (disclosureMap, holderJwt) = parseDisclosures(presentationSplit)
 
     // Verify SD-JWT
     val sdJwtParsed = verifySDJWT(presentationSplit[0], trustedIssuer)
     verifyJwtClaims(sdJwtParsed)
 
-    // Verify holder binding if required by the verifier's policy
-    if (holderBinding) {
-        val sdJwtReleaseParsed = verifyHolderBindingJwt(presentationSplit.last(), sdJwtParsed)
-        verifyJwtClaims(sdJwtReleaseParsed, expectedNonce, expectedAud)
+    // Verify holder binding if required by the verifier's policy.
+    // If holder binding is not required check nonce and aud if passed to this method.
+    if (verifyHolderBinding && holderJwt == null) {
+        throw Exception("No holder binding in presentation but required by the verifier's policy.")
+    }
+    if (verifyHolderBinding) {
+        val parsedHolderJwt = verifyHolderBindingJwt(holderJwt!!, sdJwtParsed)
+        verifyJwtClaims(parsedHolderJwt, expectedNonce, expectedAud)
+    } else if ((expectedNonce != null || expectedAud != null) && holderJwt != null) {
+        val parsedHolderJwt = parsePlainJwt(holderJwt)
+        verifyJwtClaims(parsedHolderJwt, expectedNonce, expectedAud)
+    } else if (expectedNonce != null || expectedAud != null) {
+        throw Exception("Verifier wants to verify nonce or aud claim but there was no holder JWT in the credential.")
     }
 
-    val disclosureMap = parseDisclosures(presentationSplit, booleanToInt(holderBinding))
-
+    // Check that every disclosure has a matching digest
     checkDisclosuresMatchingDigest(sdJwtParsed, disclosureMap)
 
     val sdClaimsParsed = verifyAndBuildCredential(sdJwtParsed, disclosureMap)
@@ -459,44 +495,15 @@ fun verifyJwtClaims(claims: JSONObject, expectedNonce: String? = null, expectedA
     }
 }
 
+
 /** @suppress */
-fun walkByStructure(structure: JSONArray, obj: JSONArray, fn: (s: Any?, o: Any) -> Any?): JSONArray {
-    val result = JSONArray()
-    var s = structure[0]
-    for (i in 0 until obj.length()) {
-        if (structure.length() > 1) {
-            s = structure[i]
-        }
-        if (s is JSONObject && obj[i] is JSONObject) {
-            val value = walkByStructure(s, obj.getJSONObject(i), fn)
-            result.put(value)
-        } else if (s is JSONArray && obj[i] is JSONArray) {
-            val value = walkByStructure(s, obj.getJSONArray(i), fn)
-            result.put(value)
-        } else {
-            val value = fn(s, obj[i])
-            result.put(value)
-        }
-    }
-    return result
+fun parseJWT(jwt: String): JSONObject {
+    return JSONObject(SignedJWT.parse(jwt).payload.toJSONObject())
 }
 
 /** @suppress */
-fun walkByStructure(structure: JSONObject, obj: JSONObject, fn: (s: Any?, o: Any) -> Any?): JSONObject {
-    val result = JSONObject()
-    for (key in obj.keys()) {
-        if (structure.opt(key) is JSONObject && obj[key] is JSONObject) {
-            val value = walkByStructure(structure.getJSONObject(key), obj.getJSONObject(key), fn)
-            result.put(key, value)
-        } else if (structure.opt(key) is JSONArray && obj[key] is JSONArray) {
-            val value = walkByStructure(structure.getJSONArray(key), obj.getJSONArray(key), fn)
-            result.put(key, value)
-        } else {
-            val value = fn(structure.opt(key), obj[key])
-            result.put(key, value)
-        }
-    }
-    return result
+fun parsePlainJwt(jwt: String): JSONObject {
+    return JSONObject(PlainJWT.parse(jwt).payload.toJSONObject())
 }
 
 /** @suppress */
@@ -518,6 +525,3 @@ fun b64Decode(str: String?): String {
 fun jwkThumbprint(jwk: JWK): String {
     return b64Encoder(jwk.computeThumbprint().decode())
 }
-
-/** @suppress */
-fun booleanToInt(b: Boolean) = if (b) 1 else 0

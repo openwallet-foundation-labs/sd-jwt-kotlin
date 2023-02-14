@@ -4,11 +4,11 @@ This is a Kotlin implementation of the [Selective Disclosure for JWTs](https://g
 spec using the [Nimbus JOSE + JWT](https://connect2id.com/products/nimbus-jose-jwt) 
 library.
 
-Up to date with draft version: **02** 
+Up to date with draft version: [**03**](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html)
 
 ## Checking Out the Implementation
 
-In the [SdJwtKtTest.kt](src/test/kotlin/org/sd_jwt/SdJwtKtTest.kt) file 
+In the [Debugging.kt](src/test/kotlin/org/sd_jwt/Debugging.kt) file 
 there are examples that show how the library can be used
 on the issuance, wallet and verifier side.
 
@@ -28,11 +28,14 @@ If you have Docker installed you can simply run:
 
 ## Import into Gradle Project
 
+**Note: The current version is not yet available on Maven Central. 
+It will probably be published under the version 0.1.0**
+
 *build.gradle*
 ```groovy
 plugins {
     /* ... */
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.7.10'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.10'
 }
 
 dependencies {
@@ -40,11 +43,11 @@ dependencies {
     implementation 'org.sd-jwt:sd-jwt-kotlin:0.0.0'
 
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
-    implementation("com.nimbusds:nimbus-jose-jwt:9.24.3")
+    implementation("com.nimbusds:nimbus-jose-jwt:9.30.1")
     // For ED25519 key pairs
     implementation("com.google.crypto.tink:tink:1.7.0")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
 }
 ```
 
@@ -70,7 +73,6 @@ data class SimpleTestCredential(
 Then you need a few variables to get started.
 
 ```kotlin
-val verifier = "http://verifier.example.com"
 val issuer = "http://issuer.example.com"
 
 val issuerKeyJson = """{"kty":"OKP","d":"Pp1foKt6rJAvx0igrBEfOgrT0dgMVQDHmgJZbm2h518","crv":"Ed25519","kid":"IssuerKey","x":"1NYF4EFS2Ov9hqt35fVt2J-dktLV29hs8UFjxbOXnho"}"""
@@ -83,18 +85,18 @@ val trustedIssuers = mutableMapOf<String, String>(issuer to issuerKey.toPublicJW
 
 ```kotlin
 val claims = SimpleTestCredential("Alice", "Wonderland", "alice@example.com", false, 21)
-val credential = createCredential(claims, null, issuer, issuerKey)
+val credential = createCredential(claims, issuer, issuerKey)
 ```
 
 ### Wallet Creating the Presentation
 
 ```kotlin
 val releaseClaims = SimpleTestCredential(givenName = "",  email = "", age = 0) // Non-null claims will be revealed
-val presentation = createPresentation(credential, releaseClaims, verifier, "12345", null)
+val presentation = createPresentation(credential, releaseClaims)
 ```
 
 ### Verifier Parsing and Verifying the Credential
 
 ```kotlin
-val verifiedSimpleTestCredential = verifyPresentation<SimpleTestCredential>(presentation, trustedIssuers, "12345", verifier)
+val verifiedSimpleTestCredential = verifyPresentation<SimpleTestCredential>(presentation, trustedIssuers, verifyHolderBinding = false)
 ```
