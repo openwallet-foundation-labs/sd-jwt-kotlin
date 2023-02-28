@@ -11,6 +11,7 @@ internal class SdJwtKtTest {
 
     @Serializable
     private data class SimpleTestCredential(
+        val iss: String,
         @SerialName("given_name") val givenName: String? = null,
         @SerialName("family_name") val familyName: String? = null,
         val email: String? = null,
@@ -36,26 +37,28 @@ internal class SdJwtKtTest {
     fun testSimpleCredentialWithNonceAud() {
         val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, null, "Simple Credential With Aud and Nonce")
 
-        val claims = SimpleTestCredential("Alice", "Wonderland", "alice@example.com", false, 21)
-        val releaseClaims = SimpleTestCredential(givenName = "", email = "", age = 0)
-        val expectedClaims = SimpleTestCredential(givenName = "Alice", email = "alice@example.com", age = 21)
+        val claims = SimpleTestCredential(issuer,"Alice", "Wonderland", "alice@example.com", false, 21)
+        val discloseStructure = SimpleTestCredential(iss = "")
+        val releaseClaims = SimpleTestCredential(iss = "", givenName = "", email = "", age = 0)
+        val expectedClaims = SimpleTestCredential(iss = issuer, givenName = "Alice", email = "alice@example.com", age = 21)
 
         val expectedClaimsKeys = listOf("given_name", "email", "age")
 
-        testRoutine(expectedClaimsKeys, expectedClaims, claims, null, releaseClaims, testConfig)
+        testRoutine(expectedClaimsKeys, expectedClaims, claims, discloseStructure, releaseClaims, testConfig)
     }
 
     @Test
     fun testSimpleCredential() {
         val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, null, null, null, "Simple Credential")
 
-        val claims = SimpleTestCredential("Alice", "Wonderland", "alice@example.com", false, 21)
-        val releaseClaims = SimpleTestCredential(givenName = "", email = "", age = 0)
-        val expectedClaims = SimpleTestCredential(givenName = "Alice", email = "alice@example.com", age = 21)
+        val claims = SimpleTestCredential(issuer, "Alice", "Wonderland", "alice@example.com", false, 21)
+        val discloseStructure = SimpleTestCredential(iss = "")
+        val releaseClaims = SimpleTestCredential(iss = "", givenName = "", email = "", age = 0)
+        val expectedClaims = SimpleTestCredential(iss = issuer, givenName = "Alice", email = "alice@example.com", age = 21)
 
         val expectedClaimsKeys = listOf("given_name", "email", "age")
 
-        testRoutine(expectedClaimsKeys, expectedClaims, claims, null, releaseClaims, testConfig)
+        testRoutine(expectedClaimsKeys, expectedClaims, claims, discloseStructure, releaseClaims, testConfig)
     }
 
     @Serializable
@@ -69,6 +72,7 @@ internal class SdJwtKtTest {
 
     @Serializable
     private data class IdCredential(
+        val iss: String,
         @SerialName("given_name") val givenName: String? = null,
         @SerialName("family_name") val familyName: String? = null,
         val email: String? = null,
@@ -83,6 +87,7 @@ internal class SdJwtKtTest {
             TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Advanced Credential")
 
        val claims = IdCredential(
+           issuer,
             "Alice",
             "Wonderland",
             "alice@example.com",
@@ -90,8 +95,10 @@ internal class SdJwtKtTest {
             setOf("A", "B"),
             Address("123 Main St", "Anytown", "Anystate", "US", 123456)
         )
-        val releaseClaims = IdCredential(givenName = "", familyName = "", nicknames = setOf(), address = Address())
+        val discloseStructure = IdCredential(iss = "")
+        val releaseClaims = IdCredential(iss = "", givenName = "", familyName = "", nicknames = setOf(), address = Address())
         val expectedClaims = IdCredential(
+            iss = issuer,
             givenName = "Alice",
             familyName = "Wonderland",
             nicknames = setOf("A", "B"),
@@ -99,7 +106,7 @@ internal class SdJwtKtTest {
         )
         val expectedClaimsKeys = listOf("given_name", "family_name", "nicknames", "address")
 
-        testRoutine(expectedClaimsKeys, expectedClaims, claims, null, releaseClaims, testConfig)
+        testRoutine(expectedClaimsKeys, expectedClaims, claims, discloseStructure, releaseClaims, testConfig)
     }
 
     @Test
@@ -107,6 +114,7 @@ internal class SdJwtKtTest {
         val testConfig =
             TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Advanced Credential Structured")
         val claims = IdCredential(
+            issuer,
             "Alice",
             "Wonderland",
             "alice@example.com",
@@ -114,14 +122,16 @@ internal class SdJwtKtTest {
             setOf("A", "B"),
             Address("123 Main St", "Anytown", "Anystate", "US", 123456)
         )
-        val discloseStructure = IdCredential(address = Address())
+        val discloseStructure = IdCredential(iss = "", address = Address())
         val releaseClaims = IdCredential(
+            iss = "",
             givenName = "",
             familyName = "",
             nicknames = setOf(),
             address = Address(streetAddress = "", locality = "", zipCode = 0)
         )
         val expectedClaims = IdCredential(
+            iss = issuer,
             givenName = "Alice",
             familyName = "Wonderland",
             nicknames = setOf("A", "B"),

@@ -55,6 +55,7 @@ internal class AdvancedTest {
 
     @Serializable
     private data class SimpleCredential(
+        val iss: String,
         val sub: String? = null,
         @SerialName("given_name") val givenName: String? = null,
         @SerialName("family_name") val familyName: String? = null,
@@ -68,6 +69,7 @@ internal class AdvancedTest {
     internal fun simpleTest() {
         val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Simple Test")
         val claims = SimpleCredential(
+            issuer,
             "6c5c0a49-b589-431d-bae7-219122a9ec2c",
             "John",
             "Doe",
@@ -76,8 +78,10 @@ internal class AdvancedTest {
             Address("123 Main St", "Anytown", "Anystate", "US"),
             "1940-01-01"
         )
-        val releaseClaims = SimpleCredential(givenName = "", familyName = "", address = Address())
+        val discloseStructure = SimpleCredential(iss = "")
+        val releaseClaims = SimpleCredential(iss = "", givenName = "", familyName = "", address = Address())
         val expectedClaims = SimpleCredential(
+            iss = issuer,
             givenName = "John",
             familyName = "Doe",
             address = Address(streetAddress = "123 Main St", locality = "Anytown", region = "Anystate", country = "US")
@@ -85,7 +89,7 @@ internal class AdvancedTest {
 
         val expectedClaimsKeys = listOf("given_name", "family_name", "address")
 
-        testRoutine(expectedClaimsKeys, expectedClaims, claims, null, releaseClaims, testConfig)
+        testRoutine(expectedClaimsKeys, expectedClaims, claims, discloseStructure, releaseClaims, testConfig)
     }
 
     @Test
@@ -93,6 +97,7 @@ internal class AdvancedTest {
         val testConfig =
             TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Simple Structured Test")
         val claims = SimpleCredential(
+            issuer,
             "6c5c0a49-b589-431d-bae7-219122a9ec2c",
             "John",
             "Doe",
@@ -101,14 +106,16 @@ internal class AdvancedTest {
             Address("123 Main St", "Anytown", "Anystate", "US"),
             "1940-01-01"
         )
-        val discloseStructure = SimpleCredential(address = Address())
+        val discloseStructure = SimpleCredential(iss = "", address = Address())
         val releaseClaims = SimpleCredential(
+            iss = "",
             givenName = "",
             familyName = "",
             address = Address(region = "", country = ""),
             birthdate = ""
         )
         val expectedClaims = SimpleCredential(
+            iss = issuer,
             givenName = "John",
             familyName = "Doe",
             birthdate = "1940-01-01",
@@ -190,6 +197,7 @@ internal class AdvancedTest {
 
     @Serializable
     private data class ComplexCredential(
+        val iss: String,
         @SerialName("verified_claims") val verifiedClaims: VerifiedClaims? = null,
         @SerialName("birth_middle_name") val birthMiddleName: String? = null,
         val salutation: String? = null,
@@ -200,6 +208,7 @@ internal class AdvancedTest {
     internal fun complexTest() {
         val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Complex Test")
         val claims = ComplexCredential(
+            iss = issuer,
             verifiedClaims = VerifiedClaims(
                 verification = Verification(
                     trustFramwork = "de_aml",
@@ -239,12 +248,14 @@ internal class AdvancedTest {
             msisdn = "49123456789"
         )
         val discloseStructure = ComplexCredential(
+            iss = "",
             verifiedClaims = VerifiedClaims(
                 verification = Verification(evidence = setOf(Evidence(document = Document(issuer = Issuer())))),
                 claims = Claims(placeOfBirth = PlaceOfBirth())
             )
         )
         val releaseClaims = ComplexCredential(
+            iss = "",
             verifiedClaims = VerifiedClaims(
                 verification = Verification(trustFramwork = "", time = "", evidence = setOf(Evidence(type = ""))),
                 claims = Claims(
@@ -256,6 +267,7 @@ internal class AdvancedTest {
             )
         )
         val expectedClaims = ComplexCredential(
+            iss = issuer,
             VerifiedClaims(
                 verification = Verification(
                     trustFramwork = "de_aml",

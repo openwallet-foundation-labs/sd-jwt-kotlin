@@ -29,18 +29,23 @@ inline fun <reified T>  testRoutine(
     // Initialization
     val holderPubKey = testConfig.holderKey?.toPublicJWK()
 
-    val credentialGen = createCredential(claims, testConfig.issuer, testConfig.issuerKey, holderPubKey, discloseStructure)
+    val credentialGen = createCredential(claims, testConfig.issuerKey, holderPubKey, discloseStructure)
 
     println("====================== Issuer ======================")
     println("Generated credential: $credentialGen")
 
     val presentationGen = createPresentation(credentialGen, releaseClaims, testConfig.verifier, testConfig.nonce, testConfig.holderKey)
 
-    // Verify presentation
-    checkDisclosedDisclosures(presentationGen, expectedClaimsKeys, (holderPubKey != null || testConfig.verifier != null || testConfig.nonce != null))
-
     println("====================== Wallet ======================")
     println("Generated presentation: $presentationGen")
+
+    // Verify presentation
+    checkDisclosedDisclosures(presentationGen, expectedClaimsKeys)
+
+    // Raise an error if there is no holder binding, aud or nonce and the presentation does not end with a ~ character
+    if ((holderPubKey == null && testConfig.verifier == null && testConfig.nonce == null) && !presentationGen.endsWith("~")) {
+        throw Exception("Presentation without holder binding is missing '~' at the end")
+    }
 
     val verifiedCredentialGen = verifyPresentation<T>(presentationGen, testConfig.trustedIssuers,testConfig.nonce, testConfig.verifier,
         holderPubKey != null
@@ -55,10 +60,10 @@ inline fun <reified T>  testRoutine(
 
 
 
-fun checkDisclosedDisclosures(presentation: String, expectedClaimsKeys: List<String>, holderJwt: Boolean) {
+fun checkDisclosedDisclosures(presentation: String, expectedClaimsKeys: List<String>) {
     val presentationParts = presentation.split(SEPARATOR)
-    assertEquals(expectedClaimsKeys.size, presentationParts.size - 1 - booleanToInt(holderJwt))
-    for (disclosure in presentationParts.subList(1, presentationParts.size - booleanToInt(holderJwt))) {
+    assertEquals(expectedClaimsKeys.size, presentationParts.size - 2)
+    for (disclosure in presentationParts.subList(1, presentationParts.size - 1)) {
         val disclosureJson = JSONArray(b64Decode(disclosure))
         if (!expectedClaimsKeys.contains(disclosureJson[1])) {
             throw Exception("Unexpected disclosure: $disclosure")

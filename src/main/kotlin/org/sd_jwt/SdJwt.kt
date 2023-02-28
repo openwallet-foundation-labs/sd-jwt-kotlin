@@ -3,10 +3,13 @@ package org.sd_jwt
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.PlainHeader
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.Ed25519Verifier
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
+import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyType
 import com.nimbusds.jose.jwk.OctetKeyPair
@@ -86,7 +89,7 @@ fun createSdClaims(
                 sdDigest.add(createSdClaimEntry(key, userClaims.get(key), disclosures))
             }
         }
-        if (decoy) {
+        if (sdDigest.isNotEmpty() && decoy) {
             for (i in 0 until secureRandom.nextInt(DECOY_MIN, DECOY_MAX)) {
                 sdDigest.add(createHash(generateSalt()))
             }
@@ -124,7 +127,6 @@ fun createSdClaims(
  * passed to the method and is signed with the issuer's key.
  *
  * @param userClaims        A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
- * @param issuer            URL that identifies the issuer
  * @param issuerKey         The issuer's private key to sign the SD-JWT
  * @param holderPubKey      Optional: The holder's public key if holder binding is required
  * @param discloseStructure Optional: Class that has a non-null value for each object that should be disclosable separately
@@ -133,7 +135,6 @@ fun createSdClaims(
  */
 inline fun <reified T> createCredential(
     userClaims: T,
-    issuer: String,
     issuerKey: JWK,
     holderPubKey: JWK? = null,
     discloseStructure: T? = null,
@@ -151,10 +152,6 @@ inline fun <reified T> createCredential(
     val sdClaimsSet = createSdClaims(jsonUserClaims, jsonDiscloseStructure, disclosures, decoy) as JSONObject
 
     val sdJwtPayload = JWTClaimsSet.Builder()
-        .issuer(issuer)
-        .issueTime(Date.from(Instant.now()))
-        .expirationTime(Date.from(Instant.now().plusSeconds(3600 * 24)))
-        .claim(DIGEST_ALG_KEY, "sha-256")
 
     for (key in sdClaimsSet.keys()) {
         if (sdClaimsSet.get(key) is JSONObject) {
@@ -165,6 +162,8 @@ inline fun <reified T> createCredential(
             sdJwtPayload.claim(key, sdClaimsSet.get(key))
         }
     }
+
+    sdJwtPayload.claim(DIGEST_ALG_KEY, "sha-256")
 
     if (holderPubKey != null) {
         sdJwtPayload.claim(
@@ -180,17 +179,14 @@ inline fun <reified T> createCredential(
 
 
 /** @suppress */
-fun parseDisclosures(credentialParts: List<String>): Pair<HashMap<String, String>, String?> {
+fun parseDisclosures(credentialParts: List<String>, offset: Int = 0): Pair<HashMap<String, String>, String?> {
     val disclosures = HashMap<String, String>()
     var holderJwt: String? = null
-    for (disclosure in credentialParts.subList(1, credentialParts.size)) {
-        if (!disclosure.contains(".")) {
-            disclosures[createHash(disclosure)] = disclosure
-        } else if (disclosure.contains(".") && disclosure == credentialParts.last()) {
-            holderJwt = disclosure
-        } else {
-            throw Exception("Set of disclosures contain a JWT not located at the last position.")
-        }
+    for (disclosure in credentialParts.subList(1, credentialParts.size - offset)) {
+        disclosures[createHash(disclosure)] = disclosure
+    }
+    if (credentialParts.last() != "") {
+        holderJwt = credentialParts.last()
     }
     return Pair(disclosures, holderJwt)
 }
@@ -303,6 +299,8 @@ inline fun <reified T> createPresentation(
             .claim("nonce", nonce)
             .build()
         presentation += SEPARATOR + buildJWT(holderBindingJwtPayload, holderKey)
+    } else {
+        presentation += SEPARATOR
     }
 
     return presentation
@@ -328,6 +326,14 @@ fun buildJWT(claims: JWTClaimsSet, key: JWK?): String {
         KeyType.RSA -> {
             val signer = RSASSASigner(key as RSAKey)
             val header = JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID).build()
+            val signedSdJwt = SignedJWT(header, claims)
+            signedSdJwt.sign(signer)
+            signedSdJwt.serialize()
+        }
+
+        KeyType.EC -> {
+            val signer = ECDSASigner(key as ECKey)
+            val header = JWSHeader.Builder(signer.supportedECDSAAlgorithm()).keyID(key.keyID).build()
             val signedSdJwt = SignedJWT(header, claims)
             signedSdJwt.sign(signer)
             signedSdJwt.serialize()
@@ -389,7 +395,7 @@ inline fun <reified T> verifyPresentation(
     verifyHolderBinding: Boolean = true,
 ): T {
     val presentationSplit = presentation.split(SEPARATOR)
-    val (disclosureMap, holderJwt) = parseDisclosures(presentationSplit)
+    val (disclosureMap, holderJwt) = parseDisclosures(presentationSplit, 1)
 
     // Verify SD-JWT
     val sdJwtParsed = verifySDJWT(presentationSplit[0], trustedIssuer)
@@ -465,6 +471,10 @@ fun verifyJWTSignature(jwt: String, jwkStr: String): Boolean {
 
         KeyType.RSA -> {
             RSASSAVerifier(jwk.toRSAKey())
+        }
+
+        KeyType.EC -> {
+            ECDSAVerifier(jwk.toECKey())
         }
 
         else -> {
