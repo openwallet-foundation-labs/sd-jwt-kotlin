@@ -1,5 +1,6 @@
 package org.sd_jwt
 
+import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.OctetKeyPair
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
@@ -172,7 +173,9 @@ internal class Debugging {
         val discloseStructure =
             NextcloudCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject())
 
-        val credential = createCredential(userClaims, issuerKey, holderKey.toPublicJWK(), discloseStructure)
+        val header = SdJwtHeader(JOSEObjectType("vc+sd-jwt"), "credential-claims-set+json")
+
+        val credential = createCredential(userClaims, issuerKey, holderKey.toPublicJWK(), discloseStructure, sdJwtHeader = header)
 
         println("Credential: $credential")
         println()

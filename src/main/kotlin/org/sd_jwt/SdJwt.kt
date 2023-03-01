@@ -1,7 +1,9 @@
 package org.sd_jwt
 
+import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.PlainHeader
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -32,14 +34,19 @@ import kotlin.collections.HashMap
 
 /** @suppress */
 val SD_DIGEST_KEY = "_sd"
+
 /** @suppress */
 val DIGEST_ALG_KEY = "_sd_alg"
+
 /** @suppress */
 val HOLDER_BINDING_KEY = "cnf"
+
 /** @suppress */
 val SEPARATOR = "~"
 val DECOY_MIN = 2
 val DECOY_MAX = 5
+
+data class SdJwtHeader(val type: JOSEObjectType? = null, val cty: String? = null)
 
 /** @suppress */
 fun createHash(value: String): String {
@@ -138,6 +145,7 @@ inline fun <reified T> createCredential(
     issuerKey: JWK,
     holderPubKey: JWK? = null,
     discloseStructure: T? = null,
+    sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
     val format = Json { encodeDefaults = true }
@@ -172,7 +180,7 @@ inline fun <reified T> createCredential(
         )
     }
 
-    val sdJwtEncoded = buildJWT(sdJwtPayload.build(), issuerKey)
+    val sdJwtEncoded = buildJWT(sdJwtPayload.build(), issuerKey, sdJwtHeader)
 
     return sdJwtEncoded + SEPARATOR + disclosures.joinToString(SEPARATOR)
 }
@@ -312,41 +320,51 @@ inline fun <reified T> createPresentation(
 
 
 /** @suppress */
-fun buildJWT(claims: JWTClaimsSet, key: JWK?): String {
+fun buildJWT(claims: JWTClaimsSet, key: JWK?, sdJwtHeader: SdJwtHeader = SdJwtHeader()): String {
     if (key == null) {
-        val header = PlainHeader()
-        return PlainJWT(header, claims).serialize()
+        val header = PlainHeader.Builder()
+        if (sdJwtHeader.type != null) {
+            header.type(sdJwtHeader.type)
+        }
+        if (sdJwtHeader.cty != null) {
+            header.contentType(sdJwtHeader.cty)
+        }
+        return PlainJWT(header.build(), claims).serialize()
     }
 
-    return when (key.keyType) {
+    val signer: JWSSigner
+    val header: JWSHeader.Builder
+    when (key.keyType) {
         KeyType.OKP -> {
-            val signer = Ed25519Signer(key as OctetKeyPair)
-            val header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(key.keyID).build()
-            val signedSdJwt = SignedJWT(header, claims)
-            signedSdJwt.sign(signer)
-            signedSdJwt.serialize()
+            signer = Ed25519Signer(key as OctetKeyPair)
+            header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(key.keyID)
         }
 
         KeyType.RSA -> {
-            val signer = RSASSASigner(key as RSAKey)
-            val header = JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID).build()
-            val signedSdJwt = SignedJWT(header, claims)
-            signedSdJwt.sign(signer)
-            signedSdJwt.serialize()
+            signer = RSASSASigner(key as RSAKey)
+            header = JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID)
         }
 
         KeyType.EC -> {
-            val signer = ECDSASigner(key as ECKey)
-            val header = JWSHeader.Builder(signer.supportedECDSAAlgorithm()).keyID(key.keyID).build()
-            val signedSdJwt = SignedJWT(header, claims)
-            signedSdJwt.sign(signer)
-            signedSdJwt.serialize()
+            signer = ECDSASigner(key as ECKey)
+            header = JWSHeader.Builder(signer.supportedECDSAAlgorithm()).keyID(key.keyID)
         }
 
         else -> {
             throw NotImplementedError("JWK signing algorithm not implemented")
         }
     }
+
+    if (sdJwtHeader.type != null) {
+        header.type(sdJwtHeader.type)
+    }
+    if (sdJwtHeader.cty != null) {
+        header.contentType(sdJwtHeader.cty)
+    }
+
+    val signedSdJwt = SignedJWT(header.build(), claims)
+    signedSdJwt.sign(signer)
+    return signedSdJwt.serialize()
 }
 
 /** @suppress */
