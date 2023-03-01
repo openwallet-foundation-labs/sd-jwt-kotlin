@@ -46,25 +46,39 @@ val SEPARATOR = "~"
 val DECOY_MIN = 2
 val DECOY_MAX = 5
 
+/**
+ * Data class for setting the SD-JWT header parameters typ and cty.
+ * @param type: typ header parameter (example: JOSEObjectType("vc+sd-jwt"))
+ * @param cty:  cty header parameter (example: "credential-claims-set+json")
+ */
 data class SdJwtHeader(val type: JOSEObjectType? = null, val cty: String? = null)
 
-/** @suppress */
-fun createHash(value: String): String {
+/**
+ * @suppress
+ * This method is not for API users.
+ */
+private fun createHash(value: String): String {
     val hashFunction = MessageDigest.getInstance("SHA-256")
     val messageDigest = hashFunction.digest(value.toByteArray(Charsets.UTF_8))
     return b64Encoder(messageDigest)
 }
 
-/** @suppress */
-fun generateSalt(): String {
+/**
+ * @suppress
+ * This method is not for API users.
+ */
+private fun generateSalt(): String {
     val secureRandom = SecureRandom()
     val randomness = ByteArray(16)
     secureRandom.nextBytes(randomness)
     return b64Encoder(randomness)
 }
 
-/** @suppress */
-fun createSdClaimEntry(key: String, value: Any, disclosures: MutableList<String>): String {
+/**
+ * @suppress
+ * This method is not for API users.
+ */
+private fun createSdClaimEntry(key: String, value: Any, disclosures: MutableList<String>): String {
     val disclosure = JSONArray()
         .put(generateSalt())
         .put(key)
@@ -75,7 +89,10 @@ fun createSdClaimEntry(key: String, value: Any, disclosures: MutableList<String>
     return createHash(disclosureB64)
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users.
+ */
 fun createSdClaims(
     userClaims: Any,
     discloseStructure: Any,
@@ -137,6 +154,7 @@ fun createSdClaims(
  * @param issuerKey         The issuer's private key to sign the SD-JWT
  * @param holderPubKey      Optional: The holder's public key if holder binding is required
  * @param discloseStructure Optional: Class that has a non-null value for each object that should be disclosable separately
+ * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
  * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
  * @return                  Serialized SD-JWT + disclosures to send to the holder
  */
@@ -186,7 +204,10 @@ inline fun <reified T> createCredential(
 }
 
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users.
+ */
 fun parseDisclosures(credentialParts: List<String>, offset: Int = 0): Pair<HashMap<String, String>, String?> {
     val disclosures = HashMap<String, String>()
     var holderJwt: String? = null
@@ -199,7 +220,10 @@ fun parseDisclosures(credentialParts: List<String>, offset: Int = 0): Pair<HashM
     return Pair(disclosures, holderJwt)
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users.
+ */
 fun findDisclosures(
     credentialClaims: Any,
     revealeClaims: Any,
@@ -245,6 +269,8 @@ fun findDisclosures(
 
 /**
  * @suppress
+ * This method is not for API users.
+ *
  * This method checks if every disclosure has a matching digest in the SD-JWT.
  */
 fun checkDisclosuresMatchingDigest(sdJwt: JSONObject, disclosureMap: HashMap<String, String>) {
@@ -319,7 +345,10 @@ inline fun <reified T> createPresentation(
 }
 
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users.
+ */
 fun buildJWT(claims: JWTClaimsSet, key: JWK?, sdJwtHeader: SdJwtHeader = SdJwtHeader()): String {
     if (key == null) {
         val header = PlainHeader.Builder()
@@ -367,7 +396,10 @@ fun buildJWT(claims: JWTClaimsSet, key: JWK?, sdJwtHeader: SdJwtHeader = SdJwtHe
     return signedSdJwt.serialize()
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users. Use 'verifyPresentation' method.
+ */
 fun verifyAndBuildCredential(credentialClaims: Any, disclosures: HashMap<String, String>): Any {
     if (credentialClaims is JSONObject) {
         val claims = JSONObject()
@@ -447,7 +479,10 @@ inline fun <reified T> verifyPresentation(
     return format.decodeFromString(sdClaimsParsed.toString())
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users. Use 'verifyPresentation' method.
+ */
 fun verifySDJWT(jwt: String, trustedIssuer: Map<String, String>): JSONObject {
     val jwtPayload = parseJWT(jwt)
 
@@ -467,7 +502,10 @@ fun verifySDJWT(jwt: String, trustedIssuer: Map<String, String>): JSONObject {
     }
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users. Use 'verifyPresentation' method.
+ */
 fun verifyHolderBindingJwt(jwt: String, sdJwtParsed: JSONObject): JSONObject {
     val holderPubKey = if (!sdJwtParsed.isNull(HOLDER_BINDING_KEY)) {
         sdJwtParsed.getJSONObject(HOLDER_BINDING_KEY).getJSONObject("jwk").toString()
@@ -482,8 +520,11 @@ fun verifyHolderBindingJwt(jwt: String, sdJwtParsed: JSONObject): JSONObject {
     }
 }
 
-/** @suppress */
-fun verifyJWTSignature(jwt: String, jwkStr: String): Boolean {
+/**
+ * @suppress
+ * This method is not for API users. Use 'verifyPresentation' method.
+ */
+private fun verifyJWTSignature(jwt: String, jwkStr: String): Boolean {
     // Create verifier object
     val jwk = JWK.parse(jwkStr)
     val verifier = when (jwk.keyType) {
@@ -508,7 +549,10 @@ fun verifyJWTSignature(jwt: String, jwkStr: String): Boolean {
     return SignedJWT.parse(jwt).verify(verifier)
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users. Use 'verifyPresentation' method.
+ */
 fun verifyJwtClaims(claims: JSONObject, expectedNonce: String? = null, expectedAud: String? = null) {
     if (expectedNonce != null && claims.getString("nonce") != expectedNonce) {
         throw Exception("JWT claims verification failed (invalid nonce)")
@@ -528,32 +572,50 @@ fun verifyJwtClaims(claims: JSONObject, expectedNonce: String? = null, expectedA
 }
 
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users.
+ */
 fun parseJWT(jwt: String): JSONObject {
     return JSONObject(SignedJWT.parse(jwt).payload.toJSONObject())
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users.
+ */
 fun parsePlainJwt(jwt: String): JSONObject {
     return JSONObject(PlainJWT.parse(jwt).payload.toJSONObject())
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users.
+ */
 fun b64Encoder(str: String): String {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(str.toByteArray())
 }
 
-/** @suppress */
-fun b64Encoder(b: ByteArray): String {
+/**
+ * @suppress
+ * This method is not for API users.
+ */
+private fun b64Encoder(b: ByteArray): String {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(b)
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users.
+ */
 fun b64Decode(str: String?): String {
     return String(Base64.getUrlDecoder().decode(str))
 }
 
-/** @suppress */
+/**
+ * @suppress
+ * This method is not for API users.
+ */
 fun jwkThumbprint(jwk: JWK): String {
     return b64Encoder(jwk.computeThumbprint().decode())
 }
