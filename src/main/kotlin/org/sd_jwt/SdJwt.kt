@@ -266,6 +266,7 @@ inline fun <reified T> createPresentation(
     holderKey: JWK? = null,
 ): String {
     val credentialParts = credential.split(SEPARATOR)
+    var presentation = credentialParts[0]
 
     // Parse credential into formats suitable to process it
     val sdJwt = parseJWT(credentialParts[0])
@@ -275,7 +276,10 @@ inline fun <reified T> createPresentation(
     checkDisclosuresMatchingDigest(sdJwt, disclosureMap)
 
     val releaseDisclosures = findDisclosures(sdJwt, releaseClaimsParsed, disclosureMap)
-    var presentation = credentialParts[0] + SEPARATOR + releaseDisclosures.joinToString(SEPARATOR)
+
+    if (releaseDisclosures.isNotEmpty()) {
+        presentation += SEPARATOR + releaseDisclosures.joinToString(SEPARATOR)
+    }
 
     // Throw an exception if the holderKey is not null but there is no
     // key referenced in the credential.
