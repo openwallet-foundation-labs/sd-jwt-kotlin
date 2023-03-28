@@ -46,6 +46,9 @@ val SEPARATOR = "~"
 val DECOY_MIN = 2
 val DECOY_MAX = 5
 
+/** @suppress */
+const val HIDE_NAME = "59af18d6-03b8-4349-89a9-3710d51477e9:"
+
 /**
  * Data class for setting the SD-JWT header parameters typ and cty.
  * @param type: typ header parameter (example: JOSEObjectType("vc+sd-jwt"))
@@ -104,7 +107,11 @@ fun createSdClaims(
         val sdClaims = JSONObject()
         val sdDigest = mutableListOf<String>()
         for (key in userClaims.keys()) {
-            if (!discloseStructure.isNull(key)) {
+            if (key.startsWith(HIDE_NAME)) {
+                val disclosureContent = createSdClaims(userClaims.get(key), discloseStructure.get(key), disclosures, decoy)
+                val strippedKey = key.replace(HIDE_NAME, "")
+                sdDigest.add(createSdClaimEntry(strippedKey, disclosureContent, disclosures))
+            } else if (discloseStructure.has(key)) {
                 sdClaims.put(
                     key,
                     createSdClaims(userClaims.get(key), discloseStructure.get(key), disclosures, decoy)
@@ -166,10 +173,9 @@ inline fun <reified T> createCredential(
     sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
-    val format = Json { encodeDefaults = true }
-    val jsonUserClaims = JSONObject(format.encodeToString(userClaims))
+    val jsonUserClaims = JSONObject(Json.encodeToString(userClaims))
     val jsonDiscloseStructure = if (discloseStructure != null) {
-        JSONObject(format.encodeToString(discloseStructure))
+        JSONObject(Json.encodeToString(discloseStructure))
     } else {
         JSONObject()
     }
@@ -238,8 +244,14 @@ fun findDisclosures(
                     if (disclosures.containsKey(digest)) {
                         val b64Disclosure = disclosures[digest]
                         val disclosure = JSONArray(b64Decode(b64Disclosure))
-                        if ((revealeClaims as JSONObject).has(disclosure.getString(1)) || findAll) {
-                            revealeDisclosures.add(b64Disclosure!!)
+                        // TODO improve code quality
+                        if ((revealeClaims as JSONObject).has(HIDE_NAME + disclosure.getString(1)) || (revealeClaims as JSONObject).has(disclosure.getString(1)) || findAll) {
+                            if (disclosure.get(2) is JSONObject && disclosure.getJSONObject(2).has(SD_DIGEST_KEY)) {
+                                revealeDisclosures.add(b64Disclosure!!)
+                                revealeDisclosures.addAll(findDisclosures(disclosure.getJSONObject(2), if (!findAll) revealeClaims.get(HIDE_NAME + disclosure.getString(1)) else revealeClaims, disclosures, findAll))
+                            } else {
+                                revealeDisclosures.add(b64Disclosure!!)
+                            }
                         }
                     }
                 }
@@ -409,7 +421,12 @@ fun verifyAndBuildCredential(credentialClaims: Any, disclosures: HashMap<String,
                     if (disclosures.containsKey(digest)) {
                         val b64Disclosure = disclosures[digest]
                         val disclosure = JSONArray(b64Decode(b64Disclosure))
-                        claims.put(disclosure[1] as String, disclosure[2])
+                        if (disclosure.get(2) is JSONObject && disclosure.getJSONObject(2).has(SD_DIGEST_KEY)) {
+                            val keyWithPrefix = HIDE_NAME + disclosure[1]
+                            claims.put(keyWithPrefix, verifyAndBuildCredential(disclosure.getJSONObject(2), disclosures))
+                        } else {
+                            claims.put(disclosure[1] as String, disclosure[2])
+                        }
                     }
                 }
             } else {

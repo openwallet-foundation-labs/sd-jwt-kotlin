@@ -42,7 +42,7 @@ internal class Debugging {
         val email: String? = null,
         val birthday: String? = null,
         val nicknames: Set<String>? = null,
-        val address: Address? = null,
+        @SerialName (HIDE_NAME + "address") val address: Address? = null,
         @SerialName("secret_club_membership") val secretClubMembership: String? = null
     )
 
