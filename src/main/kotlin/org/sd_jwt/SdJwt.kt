@@ -108,7 +108,8 @@ fun createSdClaims(
         val sdDigest = mutableListOf<String>()
         for (key in userClaims.keys()) {
             if (key.startsWith(HIDE_NAME)) {
-                val disclosureContent = createSdClaims(userClaims.get(key), discloseStructure.get(key), disclosures, decoy)
+                val disclosureContent =
+                    createSdClaims(userClaims.get(key), discloseStructure.get(key), disclosures, decoy)
                 val strippedKey = key.replace(HIDE_NAME, "")
                 sdDigest.add(createSdClaimEntry(strippedKey, disclosureContent, disclosures))
             } else if (discloseStructure.has(key)) {
@@ -232,34 +233,43 @@ fun parseDisclosures(credentialParts: List<String>, offset: Int = 0): Pair<HashM
  */
 fun findDisclosures(
     credentialClaims: Any,
-    revealeClaims: Any,
+    revealClaims: Any,
     disclosures: HashMap<String, String>,
     findAll: Boolean = false
 ): List<String> {
-    val revealeDisclosures = mutableListOf<String>()
-    if (credentialClaims is JSONObject && (revealeClaims is JSONObject || findAll)) {
+    val revealDisclosures = mutableListOf<String>()
+    if (credentialClaims is JSONObject && (revealClaims is JSONObject || findAll)) {
         for (key in credentialClaims.keys()) {
             if (key == SD_DIGEST_KEY) {
                 for (digest in credentialClaims.getJSONArray(key)) {
                     if (disclosures.containsKey(digest)) {
                         val b64Disclosure = disclosures[digest]
                         val disclosure = JSONArray(b64Decode(b64Disclosure))
-                        // TODO improve code quality
-                        if ((revealeClaims as JSONObject).has(HIDE_NAME + disclosure.getString(1)) || (revealeClaims as JSONObject).has(disclosure.getString(1)) || findAll) {
-                            if (disclosure.get(2) is JSONObject && disclosure.getJSONObject(2).has(SD_DIGEST_KEY)) {
-                                revealeDisclosures.add(b64Disclosure!!)
-                                revealeDisclosures.addAll(findDisclosures(disclosure.getJSONObject(2), if (!findAll) revealeClaims.get(HIDE_NAME + disclosure.getString(1)) else revealeClaims, disclosures, findAll))
-                            } else {
-                                revealeDisclosures.add(b64Disclosure!!)
-                            }
+                        // If the disclosure contains a SD_DIGEST_KEY key, we have to recursively process the structure.
+                        if (disclosure.get(2) is JSONObject && disclosure.getJSONObject(2).has(SD_DIGEST_KEY)
+                            // Check whether the disclosure should be revealed based on the existence of the key
+                            // in the revealClaims structure.
+                            && ((revealClaims as JSONObject).has(HIDE_NAME + disclosure.getString(1)) || findAll)
+                        ) {
+                            revealDisclosures.add(b64Disclosure!!)
+                            revealDisclosures.addAll(
+                                findDisclosures(
+                                    disclosure.getJSONObject(2),
+                                    if (!findAll) revealClaims.get(HIDE_NAME + disclosure.getString(1)) else revealClaims,
+                                    disclosures,
+                                    findAll
+                                )
+                            )
+                        } else if ((revealClaims as JSONObject).has(disclosure.getString(1)) || findAll) {
+                            revealDisclosures.add(b64Disclosure!!)
                         }
                     }
                 }
-            } else if ((revealeClaims as JSONObject).has(key) || findAll) {
-                revealeDisclosures.addAll(
+            } else if ((revealClaims as JSONObject).has(key) || findAll) {
+                revealDisclosures.addAll(
                     findDisclosures(
                         credentialClaims.get(key),
-                        if (!findAll) revealeClaims.get(key) else revealeClaims,
+                        if (!findAll) revealClaims.get(key) else revealClaims,
                         disclosures,
                         findAll
                     )
@@ -267,16 +277,16 @@ fun findDisclosures(
             }
         }
     } else if (credentialClaims is JSONArray) {
-        val reference = if (revealeClaims !is JSONArray || revealeClaims.length() == 0) {
+        val reference = if (revealClaims !is JSONArray || revealClaims.length() == 0) {
             JSONObject()
         } else {
-            revealeClaims.get(0)
+            revealClaims.get(0)
         }
         for (item in credentialClaims) {
-            revealeDisclosures.addAll(findDisclosures(item, reference, disclosures, findAll))
+            revealDisclosures.addAll(findDisclosures(item, reference, disclosures, findAll))
         }
     }
-    return revealeDisclosures
+    return revealDisclosures
 }
 
 /**
@@ -423,7 +433,10 @@ fun verifyAndBuildCredential(credentialClaims: Any, disclosures: HashMap<String,
                         val disclosure = JSONArray(b64Decode(b64Disclosure))
                         if (disclosure.get(2) is JSONObject && disclosure.getJSONObject(2).has(SD_DIGEST_KEY)) {
                             val keyWithPrefix = HIDE_NAME + disclosure[1]
-                            claims.put(keyWithPrefix, verifyAndBuildCredential(disclosure.getJSONObject(2), disclosures))
+                            claims.put(
+                                keyWithPrefix,
+                                verifyAndBuildCredential(disclosure.getJSONObject(2), disclosures)
+                            )
                         } else {
                             claims.put(disclosure[1] as String, disclosure[2])
                         }
