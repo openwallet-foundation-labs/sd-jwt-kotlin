@@ -4,7 +4,7 @@ This is a Kotlin implementation of the [Selective Disclosure for JWTs](https://g
 spec using the [Nimbus JOSE + JWT](https://connect2id.com/products/nimbus-jose-jwt) 
 library.
 
-Up to date with draft version: [**03**](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html)
+Up to date with draft version: [**04**](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html)
 
 ## Checking Out the Implementation
 
@@ -51,7 +51,7 @@ dependencies {
 }
 ```
 
-## Library Usage
+## Simple Library Usage
 
 ### Initialization
 
@@ -61,7 +61,8 @@ data class.
 
 ```kotlin
 @Serializable
-data class SimpleTestCredential(
+private data class SimpleTestCredential(
+    val iss: String,
     @SerialName("given_name") val givenName: String? = null,
     @SerialName("family_name") val familyName: String? = null,
     val email: String? = null,
@@ -84,19 +85,97 @@ val trustedIssuers = mutableMapOf<String, String>(issuer to issuerKey.toPublicJW
 ### Issuer Creating the Credential
 
 ```kotlin
-val claims = SimpleTestCredential("Alice", "Wonderland", "alice@example.com", false, 21)
-val credential = createCredential(claims, issuer, issuerKey)
+val claims = SimpleTestCredential(iss = issuer, "Alice", "Wonderland", "alice@example.com", false, 21)
+val discloseStructure = SimpleTestCredential(iss = "") // This  is required so that 'iss' is not hidden
+val credential = createCredential(claims, issuerKey, discloseStructure = discloseStructure)
 ```
 
 ### Wallet Creating the Presentation
 
 ```kotlin
-val releaseClaims = SimpleTestCredential(givenName = "",  email = "", age = 0) // Non-null claims will be revealed
+val releaseClaims = SimpleTestCredential(iss = "", givenName = "", email = "", age = 0) // Non-null claims will be revealed
 val presentation = createPresentation(credential, releaseClaims)
 ```
 
 ### Verifier Parsing and Verifying the Credential
 
 ```kotlin
-val verifiedSimpleTestCredential = verifyPresentation<SimpleTestCredential>(presentation, trustedIssuers, verifyHolderBinding = false)
+val verifiedSimpleTestCredential = verifyPresentation<SimpleTestCredential>(
+        presentation, 
+        trustedIssuers, 
+        verifyHolderBinding = false
+    )
+```
+
+## Advanced Library Usage
+
+This code show  how to
+- use holder binding
+- create a structured SD-JWT
+- create recursively disclosable claims (add HIDE_NAME to the @SerialName annotation)
+- add custom header fields to the SD-JWT
+```kotlin
+@Serializable
+data class CredentialSubject(
+    @SerialName("given_name") val givenName: String? = null,
+    @SerialName("family_name") val familyName: String? = null,
+    val email: String? = null
+)
+
+@Serializable
+data class EmailCredential(
+    val type: String,
+    val iat: Long,
+    val exp: Long,
+    val iss: String,
+    // Make this object recursively discloseable
+    @SerialName(HIDE_NAME + "credentialSubject") val credentialSubject: CredentialSubject? = null 
+)
+
+val issuerKey = ECKeyGenerator(Curve.P_256)
+    .keyID("Issuer")
+    .generate()
+
+val holderKey = ECKeyGenerator(Curve.P_256)
+    .keyID("Holder")
+    .generate()
+
+val issuer = "did:jwk:${b64Encoder(issuerKey.toPublicJWK().toJSONString())}"
+
+val trustedIssuers = mapOf<String, String>(issuer to issuerKey.toPublicJWK().toJSONString())
+
+val userClaims = EmailCredential(
+    type = "VerifiedEMail",
+    iat = Date.from(Instant.now()).time / 1000,
+    exp = Date.from(Instant.now().plusSeconds(3600 * 48)).time / 1000,
+    iss = issuer,
+    credentialSubject = CredentialSubject(
+        givenName = "Alice",
+        familyName = "Wonderland",
+        email = "alice@example.com"
+    )
+)
+
+// Each non-null variable will be separately disclosed. 
+// Primitive types that are not null will be in plain text in the SD-JWT.
+val discloseStructure = EmailCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject())
+
+// Add custom header fields to the SD-JWT
+val header = SdJwtHeader(JOSEObjectType("vc+sd-jwt"), "credential-claims-set+json")
+
+/***************** Create Credential *****************/
+val credential = createCredential(userClaims, issuerKey, holderKey.toPublicJWK(), discloseStructure, sdJwtHeader = header)
+
+/**************** Create Presentation ****************/
+val releaseClaims = EmailCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject(email = ""))
+val presentation = createPresentation(credential, releaseClaims, "https://nextcloud.example.com", "1234", holderKey)
+
+/**************** Verify Presentation ****************/
+val verifiedEmailCredential = verifyPresentation<EmailCredential>(
+        presentation,
+        trustedIssuers,
+        "1234",
+        "https://nextcloud.example.com",
+        true
+    )
 ```

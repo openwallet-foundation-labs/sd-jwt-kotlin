@@ -283,7 +283,115 @@ internal class AdvancedTest {
             )
         )
 
-        val expectedClaimsKeys = listOf("trust_framework", "time", "type", "given_name", "family_name", "birthdate", "country")
+        val expectedClaimsKeys =
+            listOf("trust_framework", "time", "type", "given_name", "family_name", "birthdate", "country")
+
+        testRoutine(
+            expectedClaimsKeys,
+            expectedClaims,
+            claims,
+            discloseStructure,
+            releaseClaims,
+            testConfig
+        )
+    }
+
+    @Serializable
+    private data class RecursiveVerifiedClaims(
+        val verification: Verification? = null,
+        @SerialName(HIDE_NAME + "claims") val claims: Claims? = null
+    )
+
+    @Serializable
+    private data class ComplexRecursiveCredential(
+        val iss: String,
+        @SerialName("verified_claims") val verifiedClaims: RecursiveVerifiedClaims? = null,
+        @SerialName("birth_middle_name") val birthMiddleName: String? = null,
+        val salutation: String? = null,
+        val msisdn: String? = null
+    )
+
+    @Test
+    internal fun complexRecursiveTest() {
+        val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Recursive Complex Test")
+        val claims = ComplexRecursiveCredential(
+            iss = issuer,
+            verifiedClaims = RecursiveVerifiedClaims(
+                verification = Verification(
+                    trustFramwork = "de_aml",
+                    time = "2012-04-23T18:25Z",
+                    verificationProcess = "f24c6f-6d3f-4ec5-973e-b0d8506f3bc7",
+                    evidence = setOf(
+                        Evidence(
+                            type = "document",
+                            method = "pipp",
+                            time = "2012-04-22T11:30Z",
+                            document = Document(
+                                type = "idcard",
+                                issuer = Issuer(name = "Stadt Augsburg", country = "DE"),
+                                number = "53554554",
+                                dateOfIssuance = "2010-03-23",
+                                dataOfExpiry = "2020-03-22"
+                            )
+                        )
+                    ),
+                ),
+                claims = Claims(
+                    givenName = "Max",
+                    familyName = "Meier",
+                    birthdate = "1956-01-28",
+                    placeOfBirth = PlaceOfBirth(country = "DE", locality = "Musterstadt"),
+                    nationalities = setOf("DE"),
+                    address = AddressComplex(
+                        locality = "Maxstadt",
+                        postalCode = "12344",
+                        country = "DE",
+                        streetAddress = "An der Weide 22"
+                    )
+                )
+            ),
+            birthMiddleName = "Timotheus",
+            salutation = "Dr.",
+            msisdn = "49123456789"
+        )
+        val discloseStructure = ComplexRecursiveCredential(
+            iss = "",
+            verifiedClaims = RecursiveVerifiedClaims(
+                verification = Verification(evidence = setOf(Evidence(document = Document(issuer = Issuer())))),
+                claims = Claims(placeOfBirth = PlaceOfBirth())
+            )
+        )
+        val releaseClaims = ComplexRecursiveCredential(
+            iss = "",
+            verifiedClaims = RecursiveVerifiedClaims(
+                verification = Verification(trustFramwork = "", time = "", evidence = setOf(Evidence(type = ""))),
+                claims = Claims(
+                    givenName = "",
+                    familyName = "",
+                    birthdate = "",
+                    placeOfBirth = PlaceOfBirth(country = "")
+                )
+            )
+        )
+        val expectedClaims = ComplexRecursiveCredential(
+            iss = issuer,
+            RecursiveVerifiedClaims(
+                verification = Verification(
+                    trustFramwork = "de_aml",
+                    time = "2012-04-23T18:25Z",
+                    evidence = setOf(Evidence(type = "document", document = Document(issuer = Issuer())))
+                ),
+                claims = Claims(
+                    givenName = "Max",
+                    familyName = "Meier",
+                    birthdate = "1956-01-28",
+                    placeOfBirth = PlaceOfBirth(country = "DE")
+                )
+            )
+        )
+
+        val expectedClaimsKeys =
+            listOf("trust_framework", "time", "type", "given_name", "family_name", "birthdate", "country", "claims")
 
         testRoutine(
             expectedClaimsKeys,

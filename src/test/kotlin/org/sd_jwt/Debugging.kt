@@ -136,12 +136,12 @@ internal class Debugging {
     )
 
     @Serializable
-    data class NextcloudCredential(
+    data class EmailCredential(
         val type: String,
         val iat: Long,
         val exp: Long,
         val iss: String,
-        val credentialSubject: CredentialSubject? = null
+        @SerialName(HIDE_NAME + "credentialSubject") val credentialSubject: CredentialSubject? = null
     )
 
     @Test
@@ -158,7 +158,7 @@ internal class Debugging {
 
         val trustedIssuers = mapOf<String, String>(issuer to issuerKey.toPublicJWK().toJSONString())
 
-        val userClaims = NextcloudCredential(
+        val userClaims = EmailCredential(
             type = "VerifiedEMail",
             iat = Date.from(Instant.now()).time / 1000,
             exp = Date.from(Instant.now().plusSeconds(3600 * 48)).time / 1000,
@@ -171,7 +171,7 @@ internal class Debugging {
         )
 
         val discloseStructure =
-            NextcloudCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject())
+            EmailCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject())
 
         val header = SdJwtHeader(JOSEObjectType("vc+sd-jwt"), "credential-claims-set+json")
 
@@ -180,20 +180,20 @@ internal class Debugging {
         println("Credential: $credential")
         println()
 
-        val releaseClaims = NextcloudCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject(email = ""))
+        val releaseClaims = EmailCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject(email = ""))
         val presentation =
             createPresentation(credential, releaseClaims, "https://nextcloud.example.com", "1234", holderKey)
         println("Presentation: $presentation")
         println()
 
-        val verifiedNextcloudCredential = verifyPresentation<NextcloudCredential>(
+        val verifiedEmailCredential = verifyPresentation<EmailCredential>(
             presentation,
             trustedIssuers,
             "1234",
             "https://nextcloud.example.com",
             true
         )
-        println(verifiedNextcloudCredential)
+        println(verifiedEmailCredential)
     }
 
     @Test
@@ -203,14 +203,14 @@ internal class Debugging {
         val nonce = "XZOUco1u_gEPknxS78sWWg"
         val aud = "https://example.com/verifier"
 
-        val verifiedNextcloudCredential = verifyPresentation<NextcloudCredential>(
+        val verifiedEmailCredential = verifyPresentation<EmailCredential>(
             presentation,
             trustedIssuers,
             nonce,
             aud,
             true
         )
-        println(verifiedNextcloudCredential)
+        println(verifiedEmailCredential)
     }
 
 }
