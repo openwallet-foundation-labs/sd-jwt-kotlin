@@ -47,7 +47,7 @@ dependencies {
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
     implementation("com.nimbusds:nimbus-jose-jwt:9.30.1")
     // For ED25519 key pairs
-    implementation("com.google.crypto.tink:tink:1.7.0")
+    implementation("com.google.crypto.tink:tink:1.9.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
 }
