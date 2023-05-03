@@ -31,6 +31,8 @@ If you have Docker installed you can simply run:
 **Note: The current version is not yet available on Maven Central. 
 It will probably be published under the version 0.1.0**
 
+**The current SNAPSHOT version can be found in [this repository](https://s01.oss.sonatype.org/content/repositories/snapshots/org/sd-jwt/sd-jwt-kotlin/).**
+
 *build.gradle*
 ```groovy
 plugins {
@@ -109,11 +111,12 @@ val verifiedSimpleTestCredential = verifyPresentation<SimpleTestCredential>(
 
 ## Advanced Library Usage
 
-This code show  how to
+This code shows how to
 - use holder binding
 - create a structured SD-JWT
 - create recursively disclosable claims (add HIDE_NAME to the @SerialName annotation)
 - add custom header fields to the SD-JWT
+
 ```kotlin
 @Serializable
 data class CredentialSubject(
