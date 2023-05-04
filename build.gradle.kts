@@ -18,14 +18,16 @@ dependencies {
     //implementation("org.jetbrains.dokka:dokka-gradle-plugin:1.6.20")
 
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
-    implementation("com.nimbusds:nimbus-jose-jwt:9.30.1")
+    implementation("com.nimbusds:nimbus-jose-jwt:9.31")
+    // https://mvnrepository.com/artifact/com.google.crypto.tink/tink
     // For ED25519 key pairs
     implementation("com.google.crypto.tink:tink:1.9.0")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+    // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
 
     // https://mvnrepository.com/artifact/org.json/json
-    implementation("org.json:json:20220924")
+    implementation("org.json:json:20230227")
 }
 
 tasks.test {
