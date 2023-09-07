@@ -210,6 +210,110 @@ inline fun <reified T> createCredential(
     return sdJwtEncoded + SEPARATOR + disclosures.joinToString(SEPARATOR)
 }
 
+/**
+ * This method creates a SD-JWT credential that contains the claims
+ * passed to the method and is signed with the issuer's key.
+ *
+ * @param userClaims        A JSON String that contains the user's claims
+ * @param issuerKey         The issuer's private key to sign the SD-JWT
+ * @param holderPubKey      Optional: The holder's public key if holder binding is required
+ * @param discloseStructure Optional: JSON String, must have the same structure as "userClaims". Claims that should be disclosable separately should be non-null
+ * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
+ * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
+ * @return                  Serialized SD-JWT + disclosures to send to the holder
+ */
+inline fun createCredential(
+    userClaims: String,
+    issuerKey: JWK,
+    holderPubKey: JWK? = null,
+    discloseStructure: String? = null,
+    sdJwtHeader: SdJwtHeader = SdJwtHeader(),
+    decoy: Boolean = true
+): String {
+    val jsonUserClaims = JSONObject(userClaims)
+
+    val jsonDiscloseStructure = if (discloseStructure != null) {
+        JSONObject(discloseStructure)
+    } else {
+        JSONObject()
+    }
+
+    if (jsonDiscloseStructure.isEmpty.not()) {
+        if (!validateStructures(
+                jsonUserClaims,
+                jsonDiscloseStructure
+            )
+        ) throw Exception("Structures of userClaims and discloseStructure did not match!")
+    }
+
+    val disclosures = mutableListOf<String>()
+    val sdClaimsSet = createSdClaims(jsonUserClaims, jsonDiscloseStructure, disclosures, decoy) as JSONObject
+
+    val sdJwtPayload = JWTClaimsSet.Builder()
+
+    for (key in sdClaimsSet.keys()) {
+        if (sdClaimsSet.get(key) is JSONObject) {
+            sdJwtPayload.claim(key, sdClaimsSet.getJSONObject(key).toMap())
+        } else if (sdClaimsSet.get(key) is JSONArray) {
+            sdJwtPayload.claim(key, sdClaimsSet.getJSONArray(key).toList())
+        } else {
+            sdJwtPayload.claim(key, sdClaimsSet.get(key))
+        }
+    }
+
+    sdJwtPayload.claim(DIGEST_ALG_KEY, "sha-256")
+
+    if (holderPubKey != null) {
+        sdJwtPayload.claim(
+            HOLDER_BINDING_KEY,
+            JSONObject().put("jwk", holderPubKey.toJSONObject()).toMap()
+        )
+    }
+
+    val sdJwtEncoded = buildJWT(sdJwtPayload.build(), issuerKey, sdJwtHeader)
+
+    return sdJwtEncoded + SEPARATOR + disclosures.joinToString(SEPARATOR)
+}
+
+/**
+ * @suppress
+ * This method is not for API users.
+ */
+fun validateStructures(
+    userClaims: JSONObject,
+    discloseStructure: JSONObject
+): Boolean {
+    if(userClaims.length() != discloseStructure.length()){
+        return false
+    }
+
+    val keys1 = userClaims.keys()
+    val keys2 = discloseStructure.keys()
+
+    while (keys1.hasNext()) {
+        val key1 = keys1.next() as String
+        val key2 = keys2.next() as String
+
+        if (key1 != key2) {
+            return false
+        }
+
+        val value1 = userClaims[key1]
+        val value2 = discloseStructure[key2]
+
+        // Recursively check the structure for nested JSONObjects (JSONArrays not supported)
+        if (value1 is JSONObject && value2 is JSONObject) {
+            if (!validateStructures(value1, value2)) {
+                return false
+            }
+        } else if (value1 is JSONArray && value2 is JSONArray) {
+            throw Exception(" JSON arrays not supported!")
+        }
+    }
+
+    return true
+}
+
 
 /**
  * @suppress

@@ -35,12 +35,14 @@ internal class SdJwtKtTest {
 
     @Test
     fun testSimpleCredentialWithNonceAud() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, null, "Simple Credential With Aud and Nonce")
+        val testConfig =
+            TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, null, "Simple Credential With Aud and Nonce")
 
-        val claims = SimpleTestCredential(issuer,"Alice", "Wonderland", "alice@example.com", false, 21)
+        val claims = SimpleTestCredential(issuer, "Alice", "Wonderland", "alice@example.com", false, 21)
         val discloseStructure = SimpleTestCredential(iss = "")
         val releaseClaims = SimpleTestCredential(iss = "", givenName = "", email = "", age = 0)
-        val expectedClaims = SimpleTestCredential(iss = issuer, givenName = "Alice", email = "alice@example.com", age = 21)
+        val expectedClaims =
+            SimpleTestCredential(iss = issuer, givenName = "Alice", email = "alice@example.com", age = 21)
 
         val expectedClaimsKeys = listOf("given_name", "email", "age")
 
@@ -54,7 +56,8 @@ internal class SdJwtKtTest {
         val claims = SimpleTestCredential(issuer, "Alice", "Wonderland", "alice@example.com", false, 21)
         val discloseStructure = SimpleTestCredential(iss = "")
         val releaseClaims = SimpleTestCredential(iss = "", givenName = "", email = "", age = 0)
-        val expectedClaims = SimpleTestCredential(iss = issuer, givenName = "Alice", email = "alice@example.com", age = 21)
+        val expectedClaims =
+            SimpleTestCredential(iss = issuer, givenName = "Alice", email = "alice@example.com", age = 21)
 
         val expectedClaimsKeys = listOf("given_name", "email", "age")
 
@@ -86,8 +89,8 @@ internal class SdJwtKtTest {
         val testConfig =
             TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Advanced Credential")
 
-       val claims = IdCredential(
-           issuer,
+        val claims = IdCredential(
+            issuer,
             "Alice",
             "Wonderland",
             "alice@example.com",
@@ -96,7 +99,8 @@ internal class SdJwtKtTest {
             Address("123 Main St", "Anytown", "Anystate", "US", 123456)
         )
         val discloseStructure = IdCredential(iss = "")
-        val releaseClaims = IdCredential(iss = "", givenName = "", familyName = "", nicknames = setOf(), address = Address())
+        val releaseClaims =
+            IdCredential(iss = "", givenName = "", familyName = "", nicknames = setOf(), address = Address())
         val expectedClaims = IdCredential(
             iss = issuer,
             givenName = "Alice",
@@ -169,9 +173,155 @@ internal class SdJwtKtTest {
         }
 
         // None header in holder binding JWT
-        val noneHeaderHolderBindingPresentation = "eyJraWQiOiJJc3N1ZXJLZXkiLCJhbGciOiJFZERTQSJ9.eyJfc2QiOlsiV2FvT0tOV2VMQXhaYlVfbldTZzVXbWZZNTBHZHhwSmRtbHRfZkl2S3QtRSIsIkhoZ0RLZzAtbFU5dGJUdV9ORWxVZHZvWm53cU9mUnlZQ0wwMEZzajdTdWMiLCIwLWNRanVXZk5jZjNaVjJTT2lrYWVoWkozSEU1UXNNLTh5a0NncjUyb2MwIiwiV0N4WGQ3TmRadGRJb3FTU1owWEtJbEVZaUVrY1RkZ3VtRHpkcDNWc1c4dyIsIm1ldUhXcnZoNUxZYVZpbUc4SUxRZmtFaS1vTTVfMzZJQzZ6Z19QN19JV0kiLCIyTF9EcVpsZUhETS1oeks1eENtRy02MDRreEFnVDl0N3pUbmZ0Yk5TbTJzIiwiQmJsQXFBeG5qdmFMenFLR0hQRDd0cWJRUk5FQmFPYXNZZVF4VW41OGJhNCIsIkdaNmh6RnFwd25hZnhrQTMtTGs5dHVleE9PQ3d1TU1JWGVETEZrLVgyMFUiLCJRVklBdzIxUFRncnlIMU0yd0RINjZzeldULWZyRnU4WU5qNGJMSkpEa3ZVIiwiaFZ5RlNQR1FPSWhWeWpIT0c4YVNsTl9QbWlvNng5QVhydkRndUdwQmJSZyJdLCJfc2RfYWxnIjoic2hhLTI1NiIsImlzcyI6Imh0dHA6Ly9pc3N1ZXIuZXhhbXBsZS5jb20iLCJjbmYiOnsiandrIjp7IngiOiJzNmdWTElOTGNDR2hHRURUZl92MXpNbHVMWmNYajRHT1hBZlFsT1daTTlRIiwia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsImtpZCI6IkhvbGRlcktleSJ9fSwiZXhwIjoxNjc2NDc5ODgyLCJpYXQiOjE2NzYzOTM0ODJ9.Zn09th3WkaQdyFim0OElUutofO-cohyH-dG-ElJGUq-YWSe71ONAoxh_9t3wNxMWihbdqlSMpcdje7QqDKMnAg~WyJGSDZUNTdPNXh0bnZQUjB4dTh6RHlRIiwiZ2l2ZW5fbmFtZSIsIkFsaWNlIl0~WyJCbzdaZm5XVVlkNkxxVm1mOE5iaEhnIiwiZmFtaWx5X25hbWUiLCJXb25kZXJsYW5kIl0~WyJhYVVQUWZoakxQU1V0eXBLLWZPLVFnIiwibmlja25hbWVzIixbIkEiLCJCIl1d~WyJ0anBKX0VaanM2dEEzWXR6UndweEF3IiwiYWRkcmVzcyIseyJzdHJlZXRfYWRkcmVzcyI6IjEyMyBNYWluIFN0IiwiY291bnRyeSI6IlVTIiwibG9jYWxpdHkiOiJBbnl0b3duIiwicmVnaW9uIjoiQW55c3RhdGUiLCJ6aXBfY29kZSI6MTIzNDU2fV0~eyJhbGciOiJub25lIn0.eyJhdWQiOiJodHRwOi8vdmVyaWZpZXIuZXhhbXBsZS5jb20iLCJub25jZSI6IjEyMzQ1IiwiaWF0IjoxNjc2MzkzNDgyfQ.KbPZidegP_0FpuNJgl0SZ0PPXGahQSszARPvOKxhj3jh4aejJOpWe3C9aYIyZtZI_Hk6Ks84ot1t30ylYjOWCg"
+        val noneHeaderHolderBindingPresentation =
+            "eyJraWQiOiJJc3N1ZXJLZXkiLCJhbGciOiJFZERTQSJ9.eyJfc2QiOlsiV2FvT0tOV2VMQXhaYlVfbldTZzVXbWZZNTBHZHhwSmRtbHRfZkl2S3QtRSIsIkhoZ0RLZzAtbFU5dGJUdV9ORWxVZHZvWm53cU9mUnlZQ0wwMEZzajdTdWMiLCIwLWNRanVXZk5jZjNaVjJTT2lrYWVoWkozSEU1UXNNLTh5a0NncjUyb2MwIiwiV0N4WGQ3TmRadGRJb3FTU1owWEtJbEVZaUVrY1RkZ3VtRHpkcDNWc1c4dyIsIm1ldUhXcnZoNUxZYVZpbUc4SUxRZmtFaS1vTTVfMzZJQzZ6Z19QN19JV0kiLCIyTF9EcVpsZUhETS1oeks1eENtRy02MDRreEFnVDl0N3pUbmZ0Yk5TbTJzIiwiQmJsQXFBeG5qdmFMenFLR0hQRDd0cWJRUk5FQmFPYXNZZVF4VW41OGJhNCIsIkdaNmh6RnFwd25hZnhrQTMtTGs5dHVleE9PQ3d1TU1JWGVETEZrLVgyMFUiLCJRVklBdzIxUFRncnlIMU0yd0RINjZzeldULWZyRnU4WU5qNGJMSkpEa3ZVIiwiaFZ5RlNQR1FPSWhWeWpIT0c4YVNsTl9QbWlvNng5QVhydkRndUdwQmJSZyJdLCJfc2RfYWxnIjoic2hhLTI1NiIsImlzcyI6Imh0dHA6Ly9pc3N1ZXIuZXhhbXBsZS5jb20iLCJjbmYiOnsiandrIjp7IngiOiJzNmdWTElOTGNDR2hHRURUZl92MXpNbHVMWmNYajRHT1hBZlFsT1daTTlRIiwia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsImtpZCI6IkhvbGRlcktleSJ9fSwiZXhwIjoxNjc2NDc5ODgyLCJpYXQiOjE2NzYzOTM0ODJ9.Zn09th3WkaQdyFim0OElUutofO-cohyH-dG-ElJGUq-YWSe71ONAoxh_9t3wNxMWihbdqlSMpcdje7QqDKMnAg~WyJGSDZUNTdPNXh0bnZQUjB4dTh6RHlRIiwiZ2l2ZW5fbmFtZSIsIkFsaWNlIl0~WyJCbzdaZm5XVVlkNkxxVm1mOE5iaEhnIiwiZmFtaWx5X25hbWUiLCJXb25kZXJsYW5kIl0~WyJhYVVQUWZoakxQU1V0eXBLLWZPLVFnIiwibmlja25hbWVzIixbIkEiLCJCIl1d~WyJ0anBKX0VaanM2dEEzWXR6UndweEF3IiwiYWRkcmVzcyIseyJzdHJlZXRfYWRkcmVzcyI6IjEyMyBNYWluIFN0IiwiY291bnRyeSI6IlVTIiwibG9jYWxpdHkiOiJBbnl0b3duIiwicmVnaW9uIjoiQW55c3RhdGUiLCJ6aXBfY29kZSI6MTIzNDU2fV0~eyJhbGciOiJub25lIn0.eyJhdWQiOiJodHRwOi8vdmVyaWZpZXIuZXhhbXBsZS5jb20iLCJub25jZSI6IjEyMzQ1IiwiaWF0IjoxNjc2MzkzNDgyfQ.KbPZidegP_0FpuNJgl0SZ0PPXGahQSszARPvOKxhj3jh4aejJOpWe3C9aYIyZtZI_Hk6Ks84ot1t30ylYjOWCg"
         assertThrows<Exception> {
             verifyPresentation<IdCredential>(noneHeaderHolderBindingPresentation, trustedIssuers, nonce, verifier, true)
+        }
+    }
+
+    @Test
+    fun testCreateCredentialAsJson_partly_disclosed_ok() {
+        val claims = """
+            {
+                "iss" : "$issuer",
+                "first_name" : "Max",
+                "last_name" : "Muster"
+            }
+        """.trimIndent()
+
+        val disclosure = """
+            {
+                "iss" : "",
+                "first_name" : "",
+                "last_name" : null
+            }
+        """.trimIndent()
+
+        val res = createCredential(
+            userClaims = claims,
+            issuerKey = issuerKey,
+            discloseStructure = disclosure
+        )
+
+        assert(res != null)
+    }
+
+    @Test
+    fun testCreateCredentialAsJson_fully_disclosed_ok() {
+        val claims = """
+            {
+                "iss" : "$issuer",
+                "first_name" : "Max",
+                "last_name" : "Muster"
+            }
+        """.trimIndent()
+
+        val disclosure = """
+            {
+                "iss" : "",
+                "first_name" : "",
+                "last_name" : ""
+            }
+        """.trimIndent()
+
+        val res = createCredential(
+            userClaims = claims,
+            issuerKey = issuerKey,
+            discloseStructure = disclosure
+        )
+
+        assert(res != null)
+    }
+
+    @Test
+    fun testCreateCredentialAsJson_empty_disclosure_ok() {
+        val claims = """
+            {
+                "iss" : "$issuer",
+                "first_name" : "Max",
+                "last_name" : "Muster"
+            }
+        """.trimIndent()
+
+
+        val res = createCredential(
+            userClaims = claims,
+            issuerKey = issuerKey
+        )
+
+        assert(res != null)
+    }
+
+    @Test
+    fun testCreateCredentialAsJson_partly_disclosed_ko() {
+        val claims = """
+            {
+                "iss" : "$issuer",
+                "first_name" : "Max",
+                "last_name" : "Muster"
+            }
+        """.trimIndent()
+
+        val disclosure = """
+            {
+                "iss" : "",
+                "first_name" : "",
+                "name" : null
+            }
+        """.trimIndent()
+
+        assertThrows<Exception> {
+            createCredential(
+                userClaims = claims,
+                issuerKey = issuerKey,
+                discloseStructure = disclosure
+            )
+        }
+            .message?.equals(
+                "Structures of userClaims and discloseStructure are different!"
+            )
+    }
+
+    @Test
+    fun testCreateCredentialAsJson_fully_disclosed_ko() {
+        val claims = """
+            {
+                "iss" : "$issuer",
+                "first_name" : "Max",
+                "last_name" : "Muster"
+            }
+        """.trimIndent()
+
+        val disclosure = """
+            {
+                "iss" : "",
+                "first_name" : "",
+                "last_name" : "",
+                "extra" : ""
+            }
+        """.trimIndent()
+
+        assertThrows<Exception> {
+            createCredential(
+                userClaims = claims,
+                issuerKey = issuerKey,
+                discloseStructure = disclosure
+            )
+        }
+            .message?.equals(
+                "Structures of userClaims and discloseStructure are different!"
+            )
+    }
+
+    @Test
+    fun testNonJsonStringAsInput_ko() {
+        assertThrows<Exception> {
+            createCredential(
+                userClaims = "{not a json!}",
+                issuerKey = issuerKey,
+                discloseStructure = "not a json!"
+            )
         }
     }
 }
