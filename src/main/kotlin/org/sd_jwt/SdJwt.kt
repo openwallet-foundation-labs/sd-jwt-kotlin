@@ -181,33 +181,14 @@ inline fun <reified T> createCredential(
         JSONObject()
     }
 
-    val disclosures = mutableListOf<String>()
-    val sdClaimsSet = createSdClaims(jsonUserClaims, jsonDiscloseStructure, disclosures, decoy) as JSONObject
-
-    val sdJwtPayload = JWTClaimsSet.Builder()
-
-    for (key in sdClaimsSet.keys()) {
-        if (sdClaimsSet.get(key) is JSONObject) {
-            sdJwtPayload.claim(key, sdClaimsSet.getJSONObject(key).toMap())
-        } else if (sdClaimsSet.get(key) is JSONArray) {
-            sdJwtPayload.claim(key, sdClaimsSet.getJSONArray(key).toList())
-        } else {
-            sdJwtPayload.claim(key, sdClaimsSet.get(key))
-        }
-    }
-
-    sdJwtPayload.claim(DIGEST_ALG_KEY, "sha-256")
-
-    if (holderPubKey != null) {
-        sdJwtPayload.claim(
-            HOLDER_BINDING_KEY,
-            JSONObject().put("jwk", holderPubKey.toJSONObject()).toMap()
-        )
-    }
-
-    val sdJwtEncoded = buildJWT(sdJwtPayload.build(), issuerKey, sdJwtHeader)
-
-    return sdJwtEncoded + SEPARATOR + disclosures.joinToString(SEPARATOR)
+    return createCredential(
+        userClaims = jsonUserClaims,
+        issuerKey = issuerKey,
+        holderPubKey = holderPubKey,
+        discloseStructure = jsonDiscloseStructure,
+        sdJwtHeader = sdJwtHeader,
+        decoy = decoy
+    )
 }
 
 /**
@@ -413,49 +394,15 @@ inline fun <reified T> createPresentation(
     nonce: String? = null,
     holderKey: JWK? = null,
 ): String {
-    val credentialParts = credential.split(SEPARATOR)
-    var presentation = credentialParts[0]
+    val releaseClaimsJson = JSONObject(Json.encodeToString(releaseClaims))
 
-    // Parse credential into formats suitable to process it
-    val sdJwt = parseJWT(credentialParts[0])
-    val (disclosureMap, _) = parseDisclosures(credentialParts)
-    val releaseClaimsParsed = JSONObject(Json.encodeToString(releaseClaims))
-
-    checkDisclosuresMatchingDigest(sdJwt, disclosureMap)
-
-    val releaseDisclosures = findDisclosures(sdJwt, releaseClaimsParsed, disclosureMap)
-
-    if (releaseDisclosures.isNotEmpty()) {
-        presentation += SEPARATOR + releaseDisclosures.joinToString(SEPARATOR)
-    }
-
-    // Throw an exception if the holderKey is not null but there is no
-    // key referenced in the credential.
-    if (sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
-        throw Exception("SD-JWT has no holder binding and the holderKey is not null. Presentation would be signed with a key not referenced in the credential.")
-    }
-
-    // Check whether the bound key is the same as the key that
-    // was passed to this method
-    if (!sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
-        val boundKey = JWK.parse(sdJwt.getJSONObject(HOLDER_BINDING_KEY).getJSONObject("jwk").toString())
-        if (jwkThumbprint(boundKey) != jwkThumbprint(holderKey)) {
-            throw Exception("Passed holder key is not the same as in the credential")
-        }
-    }
-
-    if (nonce != null || audience != null) {
-        val holderBindingJwtPayload = JWTClaimsSet.Builder()
-            .audience(audience)
-            .issueTime(Date.from(Instant.now()))
-            .claim("nonce", nonce)
-            .build()
-        presentation += SEPARATOR + buildJWT(holderBindingJwtPayload, holderKey)
-    } else {
-        presentation += SEPARATOR
-    }
-
-    return presentation
+    return createPresentation(
+        credential = credential,
+        releaseClaims = releaseClaimsJson,
+        audience = audience,
+        nonce = nonce,
+        holderKey = holderKey
+    )
 }
 
 /**
