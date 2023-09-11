@@ -214,40 +214,28 @@ inline fun <reified T> createCredential(
  * This method creates a SD-JWT credential that contains the claims
  * passed to the method and is signed with the issuer's key.
  *
- * @param userClaims        A JSON String that contains the user's claims
+ * @param userClaims        A JSONObject that contains the user's claims
  * @param issuerKey         The issuer's private key to sign the SD-JWT
  * @param holderPubKey      Optional: The holder's public key if holder binding is required
- * @param discloseStructure Optional: JSON String, must have the same structure as "userClaims". Claims that should be disclosable separately should be non-null
+ * @param discloseStructure Optional: JSONObject, must have the same structure as "userClaims". Claims that should be disclosable separately should be non-null
  * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
  * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
  * @return                  Serialized SD-JWT + disclosures to send to the holder
  */
 inline fun createCredential(
-    userClaims: String,
+    userClaims: JSONObject,
     issuerKey: JWK,
     holderPubKey: JWK? = null,
-    discloseStructure: String? = null,
+    discloseStructure: JSONObject = JSONObject(),
     sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
-    val jsonUserClaims = JSONObject(userClaims)
-
-    val jsonDiscloseStructure = if (discloseStructure != null) {
-        JSONObject(discloseStructure)
-    } else {
-        JSONObject()
-    }
-
-    if (jsonDiscloseStructure.isEmpty.not()) {
-        if (!validateStructures(
-                jsonUserClaims,
-                jsonDiscloseStructure
-            )
-        ) throw Exception("Structures of userClaims and discloseStructure did not match!")
+    if (!validateStructures(userClaims, discloseStructure)) {
+        throw Exception("Structures of userClaims and discloseStructure did not match!")
     }
 
     val disclosures = mutableListOf<String>()
-    val sdClaimsSet = createSdClaims(jsonUserClaims, jsonDiscloseStructure, disclosures, decoy) as JSONObject
+    val sdClaimsSet = createSdClaims(userClaims, discloseStructure, disclosures, decoy) as JSONObject
 
     val sdJwtPayload = JWTClaimsSet.Builder()
 
@@ -278,36 +266,36 @@ inline fun createCredential(
 /**
  * @suppress
  * This method is not for API users.
+ *
+ * Verifies if keys (and sub keys) of discloseStructure exist in userClaims
+ *
  */
 fun validateStructures(
     userClaims: JSONObject,
     discloseStructure: JSONObject
 ): Boolean {
-    if(userClaims.length() != discloseStructure.length()){
-        return false
-    }
+    val keys = discloseStructure.keys()
 
-    val keys1 = userClaims.keys()
-    val keys2 = discloseStructure.keys()
+    while (keys.hasNext()) {
+        val key = keys.next() as String
 
-    while (keys1.hasNext()) {
-        val key1 = keys1.next() as String
-        val key2 = keys2.next() as String
-
-        if (key1 != key2) {
+        if (userClaims.has(key).not()) {
             return false
         }
 
-        val value1 = userClaims[key1]
-        val value2 = discloseStructure[key2]
+        val value1 = userClaims[key]
+        val value2 = discloseStructure[key]
 
-        // Recursively check the structure for nested JSONObjects (JSONArrays not supported)
+        // Recursively check the structure for nested JSONObjects or JSONArrays
         if (value1 is JSONObject && value2 is JSONObject) {
             if (!validateStructures(value1, value2)) {
                 return false
             }
-        } else if (value1 is JSONArray && value2 is JSONArray) {
-            throw Exception(" JSON arrays not supported!")
+        } else if (
+            value1 is JSONArray && value2 !is JSONArray ||
+            value1 !is JSONArray && value2 is JSONArray
+        ) {
+            return false
         }
     }
 
@@ -436,6 +424,68 @@ inline fun <reified T> createPresentation(
     checkDisclosuresMatchingDigest(sdJwt, disclosureMap)
 
     val releaseDisclosures = findDisclosures(sdJwt, releaseClaimsParsed, disclosureMap)
+
+    if (releaseDisclosures.isNotEmpty()) {
+        presentation += SEPARATOR + releaseDisclosures.joinToString(SEPARATOR)
+    }
+
+    // Throw an exception if the holderKey is not null but there is no
+    // key referenced in the credential.
+    if (sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
+        throw Exception("SD-JWT has no holder binding and the holderKey is not null. Presentation would be signed with a key not referenced in the credential.")
+    }
+
+    // Check whether the bound key is the same as the key that
+    // was passed to this method
+    if (!sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
+        val boundKey = JWK.parse(sdJwt.getJSONObject(HOLDER_BINDING_KEY).getJSONObject("jwk").toString())
+        if (jwkThumbprint(boundKey) != jwkThumbprint(holderKey)) {
+            throw Exception("Passed holder key is not the same as in the credential")
+        }
+    }
+
+    if (nonce != null || audience != null) {
+        val holderBindingJwtPayload = JWTClaimsSet.Builder()
+            .audience(audience)
+            .issueTime(Date.from(Instant.now()))
+            .claim("nonce", nonce)
+            .build()
+        presentation += SEPARATOR + buildJWT(holderBindingJwtPayload, holderKey)
+    } else {
+        presentation += SEPARATOR
+    }
+
+    return presentation
+}
+
+/**
+ * This method takes an SD-JWT and its disclosures and
+ * creates a presentation that discloses only the desired claims.
+ *
+ * @param credential    A string containing the SD-JWT and its disclosures concatenated by a period character
+ * @param releaseClaims A JSONObject contains a non-null value for every claim that should be disclosed
+ * @param audience      Optional: The value of the "aud" claim in the holder JWT
+ * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
+ * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
+ * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
+ */
+inline fun createPresentation(
+    credential: String,
+    releaseClaims: JSONObject,
+    audience: String? = null,
+    nonce: String? = null,
+    holderKey: JWK? = null,
+): String {
+    val credentialParts = credential.split(SEPARATOR)
+    var presentation = credentialParts[0]
+
+    // Parse credential into formats suitable to process it
+    val sdJwt = parseJWT(credentialParts[0])
+    val (disclosureMap, _) = parseDisclosures(credentialParts)
+
+    checkDisclosuresMatchingDigest(sdJwt, disclosureMap)
+
+    val releaseDisclosures = findDisclosures(sdJwt, releaseClaims, disclosureMap)
 
     if (releaseDisclosures.isNotEmpty()) {
         presentation += SEPARATOR + releaseDisclosures.joinToString(SEPARATOR)
@@ -609,8 +659,68 @@ inline fun <reified T> verifyPresentation(
 
     val sdClaimsParsed = verifyAndBuildCredential(sdJwtParsed, disclosureMap)
 
+    val sdClaimsParsedString = sdClaimsParsed.toString()
+
     val format = Json { ignoreUnknownKeys = true }
-    return format.decodeFromString(sdClaimsParsed.toString())
+    return format.decodeFromString(sdClaimsParsedString)
+}
+
+/**
+ * The method takes a serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb;, parses it and checks
+ * the validity of the credential. The disclosed claims are returned in an object
+ * of the credential class.
+ *
+ * @param presentation          Serialized presentation containing the SD-JWT and the disclosures
+ * @param trustedIssuer         A map that contains issuer urls and the corresponding JWKs in JSON format serialized as strings
+ * @param expectedNonce         Optional: The value that is expected in the nonce claim of the holder JWT
+ * @param expectedAud           Optional: The value that is expected in the aud claim of the holder JWT
+ * @param verifyHolderBinding   Optional: Determine whether holder binding is required by the verifier's policy (default: true)
+ * @return                      A JSONObject of the credential class filled with the disclosed claims
+ */
+inline fun verifyPresentation(
+    presentation: String,
+    trustedIssuer: Map<String, String>,
+    expectedNonce: String? = null,
+    expectedAud: String? = null,
+    verifyHolderBinding: Boolean = true,
+): JSONObject {
+    val presentationSplit = presentation.split(SEPARATOR)
+    val (disclosureMap, holderJwt) = parseDisclosures(presentationSplit, 1)
+
+    // Verify SD-JWT
+    val sdJwtParsed = verifySDJWT(presentationSplit[0], trustedIssuer)
+    verifyJwtClaims(sdJwtParsed)
+
+    // Verify holder binding if required by the verifier's policy.
+    // If holder binding is not required check nonce and aud if passed to this method.
+    if (verifyHolderBinding && holderJwt == null) {
+        throw Exception("No holder binding in presentation but required by the verifier's policy.")
+    }
+    if (verifyHolderBinding) {
+        val parsedHolderJwt = verifyHolderBindingJwt(holderJwt!!, sdJwtParsed)
+        verifyJwtClaims(parsedHolderJwt, expectedNonce, expectedAud)
+    } else if ((expectedNonce != null || expectedAud != null) && holderJwt != null) {
+        val parsedHolderJwt = parsePlainJwt(holderJwt)
+        verifyJwtClaims(parsedHolderJwt, expectedNonce, expectedAud)
+    } else if (expectedNonce != null || expectedAud != null) {
+        throw Exception("Verifier wants to verify nonce or aud claim but there was no holder JWT in the credential.")
+    }
+
+    // Check that every disclosure has a matching digest
+    checkDisclosuresMatchingDigest(sdJwtParsed, disclosureMap)
+
+    val sdClaimsParsed = verifyAndBuildCredential(sdJwtParsed, disclosureMap)
+
+    // Exclude technical claims
+    val sdClaimsParsedFiltered = JSONObject(sdClaimsParsed.toString()).toMap().filterKeys { key ->
+        key !in setOf(
+            SD_DIGEST_KEY,
+            DIGEST_ALG_KEY,
+            HOLDER_BINDING_KEY
+        )
+    }
+
+    return JSONObject(sdClaimsParsedFiltered)
 }
 
 /**

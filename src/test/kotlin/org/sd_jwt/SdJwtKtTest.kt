@@ -3,6 +3,9 @@ package org.sd_jwt
 import com.nimbusds.jose.jwk.OctetKeyPair
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import org.json.JSONObject
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.*
@@ -181,147 +184,323 @@ internal class SdJwtKtTest {
     }
 
     @Test
-    fun testCreateCredentialAsJson_partly_disclosed_ok() {
-        val claims = """
-            {
-                "iss" : "$issuer",
-                "first_name" : "Max",
-                "last_name" : "Muster"
-            }
-        """.trimIndent()
+    fun testAdvancedCredentialStructured_Json_ok() {
+        val testConfig =
+            TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Advanced Credential Structured")
 
-        val disclosure = """
-            {
-                "iss" : "",
-                "first_name" : "",
-                "last_name" : null
-            }
-        """.trimIndent()
-
-        val res = createCredential(
-            userClaims = claims,
-            issuerKey = issuerKey,
-            discloseStructure = disclosure
+        val claims = IdCredential(
+            issuer,
+            givenName = "Alice",
+            familyName = "Wonderland",
+            email = "alice@example.com",
+            birthday = "1940-01-01",
+            nicknames = setOf("A", "B"),
+            address = Address("123 Main St", "Anytown", "Anystate", "US", 123456)
         )
 
-        assert(res != null)
+        val claimsJson = JSONObject(Json.encodeToString(claims))
+
+        val discloseStructure = IdCredential(iss = "", address = Address())
+
+        val discloseStructureJson = JSONObject(Json.encodeToString(discloseStructure))
+
+        val releaseClaims = IdCredential(
+            iss = "",
+            givenName = "",
+            familyName = "",
+            nicknames = setOf(),
+            address = Address(streetAddress = "", locality = "", zipCode = 0)
+        )
+
+        val releaseClaimsJson = JSONObject(Json.encodeToString(releaseClaims))
+
+        val expectedClaims = IdCredential(
+            iss = issuer,
+            givenName = "Alice",
+            familyName = "Wonderland",
+            nicknames = setOf("A", "B"),
+            address = Address(streetAddress = "123 Main St", locality = "Anytown", zipCode = 123456)
+        )
+
+        val expectedClaimsJson = JSONObject(Json.encodeToString(expectedClaims))
+
+        val expectedClaimsKeys = listOf(
+            "given_name",
+            "family_name",
+            "nicknames",
+            "street_address",
+            "locality",
+            "zip_code"
+        )
+
+        testRoutine(
+            expectedClaimsKeys = expectedClaimsKeys,
+            expectedClaims = expectedClaimsJson,
+            claims = claimsJson,
+            discloseStructure = discloseStructureJson,
+            releaseClaims = releaseClaimsJson,
+            testConfig = testConfig,
+            compareSingleValues = true
+        )
     }
 
     @Test
-    fun testCreateCredentialAsJson_fully_disclosed_ok() {
-        val claims = """
-            {
-                "iss" : "$issuer",
-                "first_name" : "Max",
-                "last_name" : "Muster"
-            }
-        """.trimIndent()
+    fun testCreateSimpleCredentialAsJson_partly_disclosed_ok() {
+        val testConfig =
+            TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Advanced JSON-String Credential")
 
-        val disclosure = """
-            {
-                "iss" : "",
-                "first_name" : "",
-                "last_name" : ""
-            }
-        """.trimIndent()
-
-        val res = createCredential(
-            userClaims = claims,
-            issuerKey = issuerKey,
-            discloseStructure = disclosure
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("address", "Musterstr. 15, 75759, DE")
+            )
         )
 
-        assert(res != null)
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("first_name", null),
+                Pair("last_name", null),
+                Pair("age", null),
+                Pair("address", null)
+            )
+        )
+
+        val releaseClaims = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("first_name", ""),
+                Pair("age", "")
+            )
+        )
+
+        val expectedClaims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("age", "33")
+            )
+        )
+
+        val expectedClaimsKeys = listOf(
+            "first_name",
+            "age",
+        )
+
+        testRoutine(
+            expectedClaimsKeys = expectedClaimsKeys,
+            expectedClaims = expectedClaims,
+            claims = claims,
+            discloseStructure = discloseStructure,
+            releaseClaims = releaseClaims,
+            testConfig = testConfig,
+            compareSingleValues = true
+        )
     }
 
     @Test
-    fun testCreateCredentialAsJson_empty_disclosure_ok() {
-        val claims = """
-            {
-                "iss" : "$issuer",
-                "first_name" : "Max",
-                "last_name" : "Muster"
-            }
-        """.trimIndent()
+    fun testSimpleCredentialFormat_Json_no_SD_ok() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("address", "Musterstr. 15, 75759, DE")
+            )
+        )
 
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("first_name", ""),
+                Pair("last_name", ""),
+                Pair("age", ""),
+                Pair("address", "")
+            )
+        )
 
-        val res = createCredential(
+        val credential = createCredential(
+            userClaims = claims,
+            issuerKey = issuerKey,
+            discloseStructure = discloseStructure
+        )
+
+        val credentialParts = credential.split(SEPARATOR)
+        assertEquals(2, credentialParts.size)
+        assert(credentialParts[1].isEmpty())
+    }
+
+    @Test
+    fun testCreateSimpleCredentialAsJson_empty_disclosure_ok() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("address", "Musterstr. 15, 75759, DE")
+            )
+        )
+
+        val credential = createCredential(
             userClaims = claims,
             issuerKey = issuerKey
         )
 
-        assert(res != null)
+        val credentialParts = credential.split(SEPARATOR)
+        assertEquals(6, credentialParts.size)
     }
 
     @Test
-    fun testCreateCredentialAsJson_partly_disclosed_ko() {
-        val claims = """
-            {
-                "iss" : "$issuer",
-                "first_name" : "Max",
-                "last_name" : "Muster"
-            }
-        """.trimIndent()
+    fun testCreateSimpleCredentialAsJson_partly_disclosed_ko() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("address", "Musterstr. 15, 75759, DE")
+            )
+        )
 
-        val disclosure = """
-            {
-                "iss" : "",
-                "first_name" : "",
-                "name" : null
-            }
-        """.trimIndent()
-
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("extra", ""),
+            )
+        )
         assertThrows<Exception> {
             createCredential(
                 userClaims = claims,
                 issuerKey = issuerKey,
-                discloseStructure = disclosure
+                discloseStructure = discloseStructure
             )
         }
-            .message?.equals(
-                "Structures of userClaims and discloseStructure are different!"
-            )
+            .also {
+                it.message?.let {
+                    assert(
+                        it.contains("Structures of userClaims and discloseStructure did not match!")
+                    )
+                }
+            }
     }
 
     @Test
-    fun testCreateCredentialAsJson_fully_disclosed_ko() {
-        val claims = """
-            {
-                "iss" : "$issuer",
-                "first_name" : "Max",
-                "last_name" : "Muster"
-            }
-        """.trimIndent()
+    fun testCreateSimpleCredentialAsJson_fully_disclosed_ko() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("address", "Musterstr. 15, 75759, DE")
+            )
+        )
 
-        val disclosure = """
-            {
-                "iss" : "",
-                "first_name" : "",
-                "last_name" : "",
-                "extra" : ""
-            }
-        """.trimIndent()
-
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("extra", ""),
+                Pair("iss", ""),
+                Pair("first_name", ""),
+                Pair("last_name", ""),
+                Pair("age", ""),
+                Pair("address", ""),
+            )
+        )
         assertThrows<Exception> {
             createCredential(
                 userClaims = claims,
                 issuerKey = issuerKey,
-                discloseStructure = disclosure
+                discloseStructure = discloseStructure
             )
         }
-            .message?.equals(
-                "Structures of userClaims and discloseStructure are different!"
-            )
+            .also {
+                it.message?.let {
+                    assert(
+                        it.contains("Structures of userClaims and discloseStructure did not match!")
+                    )
+                }
+            }
     }
 
     @Test
-    fun testNonJsonStringAsInput_ko() {
+    fun testCreateSimpleCredentialAsJson_jsonArray_ko() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("nicknames", "Momo"),
+                Pair("cars", setOf("BMW", "Tesla", "Ford"))
+            )
+        )
+
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("first_name", ""),
+                Pair("last_name", ""),
+                Pair("age", ""),
+                Pair("nicknames", setOf<String>()),
+                Pair("cars", ""),
+            )
+        )
         assertThrows<Exception> {
             createCredential(
-                userClaims = "{not a json!}",
+                userClaims = claims,
                 issuerKey = issuerKey,
-                discloseStructure = "not a json!"
+                discloseStructure = discloseStructure
             )
         }
+            .also {
+                it.message?.let {
+                    assert(
+                        it.contains("Structures of userClaims and discloseStructure did not match!")
+                    )
+                }
+            }
     }
+
+    @Test
+    fun testCreateSimpleCredentialAsJson_jsonArray2_ko() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("nicknames", "Momo")
+            )
+        )
+
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("first_name", ""),
+                Pair("last_name", ""),
+                Pair("age", ""),
+                Pair("nicknames", setOf<String>())
+            )
+        )
+        assertThrows<Exception> {
+            createCredential(
+                userClaims = claims,
+                issuerKey = issuerKey,
+                discloseStructure = discloseStructure
+            )
+        }
+            .also {
+                it.message?.let {
+                    assert(
+                        it.contains("Structures of userClaims and discloseStructure did not match!")
+                    )
+                }
+            }
+    }
+
 }
