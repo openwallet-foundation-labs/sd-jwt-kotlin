@@ -211,7 +211,7 @@ inline fun createCredential(
     sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
-    if (!validateStructures(userClaims, discloseStructure)) {
+    if (!validateJSON(discloseStructure, userClaims)) {
         throw Exception("Structures of userClaims and discloseStructure did not match!")
     }
 
@@ -248,34 +248,39 @@ inline fun createCredential(
  * @suppress
  * This method is not for API users.
  *
- * Verifies if keys (and sub keys) of discloseStructure exist in userClaims
+ * Verifies if keys (and sub keys) of firstJson exist in secondJson
  *
  */
-fun validateStructures(
-    userClaims: JSONObject,
-    discloseStructure: JSONObject
+fun validateJSON(
+    firstJson: JSONObject,
+    secondJson: JSONObject
 ): Boolean {
-    val keys = discloseStructure.keys()
+    val keys = firstJson.keys()
 
     while (keys.hasNext()) {
         val key = keys.next() as String
 
-        if (userClaims.has(key).not()) {
+        if (secondJson.has(key).not()) {
             return false
         }
 
-        val value1 = userClaims[key]
-        val value2 = discloseStructure[key]
+        val value1 = firstJson[key]
+        val value2 = secondJson[key]
 
         // Recursively check the structure for nested JSONObjects or JSONArrays
         if (value1 is JSONObject && value2 is JSONObject) {
-            if (!validateStructures(value1, value2)) {
+            if (!validateJSON(value1, value2)) {
+                return false
+            }
+        } else if (value1 is JSONArray && value2 is JSONArray) {
+            if (!validateJSONArray(value1, value2)) {
                 return false
             }
         } else if (
             value1 is JSONArray && value2 !is JSONArray ||
             value1 !is JSONArray && value2 is JSONArray
         ) {
+            // value types should match
             return false
         }
     }
@@ -283,6 +288,35 @@ fun validateStructures(
     return true
 }
 
+/**
+ * @suppress
+ * This method is not for API users.
+ *
+ * Verifies if keys (and sub keys) of firstArray exist in secondArray
+ *
+ */
+fun validateJSONArray(firstArray: JSONArray, secondArray: JSONArray): Boolean {
+    if (firstArray.length() != secondArray.length()) {
+        return false
+    }
+
+    for (i in 0 until firstArray.length()) {
+        if (firstArray[i] is JSONObject && secondArray[i] is JSONObject) {
+            if (!validateJSON(firstArray.getJSONObject(i), secondArray.getJSONObject(i))) {
+                return false
+            }
+        } else if (firstArray[i] is JSONArray && secondArray[i] is JSONArray) {
+            if (!validateJSONArray(firstArray.getJSONArray(i), secondArray.getJSONArray(i))) {
+                return false
+            }
+        } else {
+            if (firstArray[i] != secondArray[i]) {
+                return false
+            }
+        }
+    }
+    return true
+}
 
 /**
  * @suppress
