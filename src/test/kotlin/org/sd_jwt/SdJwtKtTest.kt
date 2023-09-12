@@ -378,7 +378,7 @@ internal class SdJwtKtTest {
             .also {
                 it.message?.let {
                     assert(
-                        it.contains("Structures of userClaims and discloseStructure did not match!")
+                        it.contains("Structures of userClaims and discloseStructure do not match!")
                     )
                 }
             }
@@ -416,10 +416,42 @@ internal class SdJwtKtTest {
             .also {
                 it.message?.let {
                     assert(
-                        it.contains("Structures of userClaims and discloseStructure did not match!")
+                        it.contains("Structures of userClaims and discloseStructure do not match!")
                     )
                 }
             }
+    }
+
+    @Test
+    fun testCreateCredentialAsJson_jsonArray_ok() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("nicknames", setOf("Momo", "MadMax"))
+            )
+        )
+
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("first_name", ""),
+                Pair("last_name", ""),
+                Pair("age", ""),
+                Pair("nicknames", setOf<String>())
+            )
+        )
+
+        val res = createCredential(
+            userClaims = claims,
+            issuerKey = issuerKey,
+            discloseStructure = discloseStructure
+        )
+
+        assert(res.isNotEmpty())
+
     }
 
     @Test
@@ -455,7 +487,7 @@ internal class SdJwtKtTest {
             .also {
                 it.message?.let {
                     assert(
-                        it.contains("Structures of userClaims and discloseStructure did not match!")
+                        it.contains("Structures of userClaims and discloseStructure do not match!")
                     )
                 }
             }
@@ -492,7 +524,7 @@ internal class SdJwtKtTest {
             .also {
                 it.message?.let {
                     assert(
-                        it.contains("Structures of userClaims and discloseStructure did not match!")
+                        it.contains("Structures of userClaims and discloseStructure do not match!")
                     )
                 }
             }

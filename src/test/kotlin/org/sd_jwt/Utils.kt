@@ -36,7 +36,7 @@ inline fun <reified T>  testRoutine(
     println("====================== Issuer ======================")
     println("Generated credential: $credentialGen")
 
-    val presentationGen = createPresentation(credentialGen, releaseClaims, testConfig.verifier, testConfig.nonce, testConfig.holderKey)
+    val presentationGen = createPresentation(credentialGen, claims, releaseClaims, testConfig.verifier, testConfig.nonce, testConfig.holderKey)
 
     println("====================== Wallet ======================")
     println("Generated presentation: $presentationGen")
@@ -87,7 +87,7 @@ inline fun testRoutine(
     println("Generated credential: $credentialGen")
 
     val presentationGen =
-        createPresentation(credentialGen, releaseClaims, testConfig.verifier, testConfig.nonce, testConfig.holderKey)
+        createPresentation(credentialGen, claims, releaseClaims, testConfig.verifier, testConfig.nonce, testConfig.holderKey)
 
     println("====================== Wallet ======================")
     println("Generated presentation: $presentationGen")
