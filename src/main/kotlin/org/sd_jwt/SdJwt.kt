@@ -455,7 +455,7 @@ inline fun createPresentation(
     releaseClaims: JSONObject,
     audience: String? = null,
     nonce: String? = null,
-    holderKey: JWK? = null,
+    holderKey: JWK? = null
 ): String {
     val credentialParts = credential.split(SEPARATOR)
     var presentation = credentialParts[0]
@@ -613,37 +613,13 @@ inline fun <reified T> verifyPresentation(
     expectedAud: String? = null,
     verifyHolderBinding: Boolean = true,
 ): T {
-    val presentationSplit = presentation.split(SEPARATOR)
-    val (disclosureMap, holderJwt) = parseDisclosures(presentationSplit, 1)
 
-    // Verify SD-JWT
-    val sdJwtParsed = verifySDJWT(presentationSplit[0], trustedIssuer)
-    verifyJwtClaims(sdJwtParsed)
-
-    // Verify holder binding if required by the verifier's policy.
-    // If holder binding is not required check nonce and aud if passed to this method.
-    if (verifyHolderBinding && holderJwt == null) {
-        throw Exception("No holder binding in presentation but required by the verifier's policy.")
-    }
-    if (verifyHolderBinding) {
-        val parsedHolderJwt = verifyHolderBindingJwt(holderJwt!!, sdJwtParsed)
-        verifyJwtClaims(parsedHolderJwt, expectedNonce, expectedAud)
-    } else if ((expectedNonce != null || expectedAud != null) && holderJwt != null) {
-        val parsedHolderJwt = parsePlainJwt(holderJwt)
-        verifyJwtClaims(parsedHolderJwt, expectedNonce, expectedAud)
-    } else if (expectedNonce != null || expectedAud != null) {
-        throw Exception("Verifier wants to verify nonce or aud claim but there was no holder JWT in the credential.")
-    }
-
-    // Check that every disclosure has a matching digest
-    checkDisclosuresMatchingDigest(sdJwtParsed, disclosureMap)
-
-    val sdClaimsParsed = verifyAndBuildCredential(sdJwtParsed, disclosureMap)
-
-    val sdClaimsParsedString = sdClaimsParsed.toString()
+    val sdClaimsParsedJson = verifyPresentation(
+        presentation, trustedIssuer, expectedNonce, expectedAud, verifyHolderBinding
+    )
 
     val format = Json { ignoreUnknownKeys = true }
-    return format.decodeFromString(sdClaimsParsedString)
+    return format.decodeFromString(sdClaimsParsedJson.toString())
 }
 
 /**
