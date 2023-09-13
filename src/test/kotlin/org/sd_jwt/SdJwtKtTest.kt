@@ -5,6 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -441,6 +442,52 @@ internal class SdJwtKtTest {
                 Pair("last_name", ""),
                 Pair("age", ""),
                 Pair("nicknames", setOf<String>())
+            )
+        )
+
+        val res = createCredential(
+            userClaims = claims,
+            issuerKey = issuerKey,
+            discloseStructure = discloseStructure
+        )
+
+        assert(res.isNotEmpty())
+
+    }
+
+    @Test
+    fun testCreateCredentialAsJson_jsonArray2_ok() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("complexClaim", JSONArray(setOf(
+                    mapOf(
+                        Pair("key1", "value1"),
+                        Pair("key2", "value2")),
+                    mapOf(
+                        Pair("key3", "value3"),
+                        Pair("key4", "value4")),
+                    mapOf((Pair("Signature", "SigValue")))
+                ))
+            )
+        ))
+
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("first_name", ""),
+                Pair("last_name", ""),
+                Pair("age", ""),
+                Pair("complexClaim", JSONArray(setOf(
+                    JSONObject(mapOf<String, String>()),
+                    JSONObject(mapOf<String, String>()),
+                    JSONObject(mapOf(
+                        Pair("Signature", "")
+                    ))
+                )))
             )
         )
 

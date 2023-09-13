@@ -296,10 +296,6 @@ fun validateJSON(
  *
  */
 fun validateJSONArray(firstArray: JSONArray, secondArray: JSONArray): Boolean {
-    //if (firstArray.length() != secondArray.length()) {
-    //    return false
-    //}
-
     for (i in 0 until firstArray.length()) {
         if (firstArray[i] is JSONObject && secondArray[i] is JSONObject) {
             if (!validateJSON(firstArray.getJSONObject(i), secondArray.getJSONObject(i))) {
@@ -309,12 +305,9 @@ fun validateJSONArray(firstArray: JSONArray, secondArray: JSONArray): Boolean {
             if (!validateJSONArray(firstArray.getJSONArray(i), secondArray.getJSONArray(i))) {
                 return false
             }
-        } else {
-            if (firstArray[i] != secondArray[i]) {
-                return false
-            }
         }
     }
+
     return true
 }
 
