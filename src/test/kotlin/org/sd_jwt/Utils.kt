@@ -1,6 +1,8 @@
 package org.sd_jwt
 
 import com.nimbusds.jose.jwk.JWK
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.test.assertEquals
@@ -24,40 +26,20 @@ inline fun <reified T>  testRoutine(
     releaseClaims: T,
     testConfig: TestConfig
 ) {
-    println("\n====================================================")
-    println(testConfig.name)
-    println("====================================================\n")
+    val expectedClaimsJson = JSONObject(Json.encodeToString(expectedClaims))
+    val claimsJson = JSONObject(Json.encodeToString(claims))
+    val discloseStructureJson = JSONObject(Json.encodeToString(discloseStructure))
+    val releaseClaimsJson = JSONObject(Json.encodeToString(releaseClaims))
 
-    // Initialization
-    val holderPubKey = testConfig.holderKey?.toPublicJWK()
-
-    val credentialGen = createCredential(claims, testConfig.issuerKey, holderPubKey, discloseStructure)
-
-    println("====================== Issuer ======================")
-    println("Generated credential: $credentialGen")
-
-    val presentationGen = createPresentation(credentialGen, claims, releaseClaims, testConfig.verifier, testConfig.nonce, testConfig.holderKey)
-
-    println("====================== Wallet ======================")
-    println("Generated presentation: $presentationGen")
-
-    // Verify presentation
-    checkDisclosedDisclosures(presentationGen, expectedClaimsKeys)
-
-    // Raise an error if there is no holder binding, aud or nonce and the presentation does not end with a ~ character
-    if ((holderPubKey == null && testConfig.verifier == null && testConfig.nonce == null) && !presentationGen.endsWith("~")) {
-        throw Exception("Presentation without holder binding is missing '~' at the end")
-    }
-
-    val verifiedCredentialGen = verifyPresentation<T>(presentationGen, testConfig.trustedIssuers,testConfig.nonce, testConfig.verifier,
-        holderPubKey != null
+    testRoutine(
+        expectedClaimsKeys = expectedClaimsKeys,
+        expectedClaims = expectedClaimsJson,
+        claims = claimsJson,
+        discloseStructure = discloseStructureJson,
+        releaseClaims = releaseClaimsJson,
+        testConfig = testConfig,
+        compareSingleValues = true
     )
-
-    println("===================== Verifier =====================")
-    println("Verified credential: $verifiedCredentialGen\n")
-
-    // Verify parsed credential
-    assertEquals(expectedClaims, verifiedCredentialGen)
 }
 
 inline fun testRoutine(
@@ -109,6 +91,7 @@ inline fun testRoutine(
     println("Verified credential: $verifiedCredentialGen\n")
 
     if(!compareSingleValues){
+        // Verify parsed credential
         assertEquals(expectedClaims, verifiedCredentialGen)
     }
     else{
