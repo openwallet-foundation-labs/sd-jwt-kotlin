@@ -408,7 +408,6 @@ fun checkDisclosuresMatchingDigest(sdJwt: JSONObject, disclosureMap: HashMap<Str
  * creates a presentation that discloses only the desired claims.
  *
  * @param credential    A string containing the SD-JWT and its disclosures concatenated by a period character
- * @param claims        An object of the Credential's class containing all claims, used for validation
  * @param releaseClaims An object of the same class as the credential and every claim that should be disclosed contains a non-null value
  * @param audience      Optional: The value of the "aud" claim in the holder JWT
  * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
@@ -417,18 +416,15 @@ fun checkDisclosuresMatchingDigest(sdJwt: JSONObject, disclosureMap: HashMap<Str
  */
 inline fun <reified T> createPresentation(
     credential: String,
-    claims: T,
     releaseClaims: T,
     audience: String? = null,
     nonce: String? = null,
     holderKey: JWK? = null,
 ): String {
-    val credentialClaimsJson = JSONObject(Json.encodeToString(claims))
     val releaseClaimsJson = JSONObject(Json.encodeToString(releaseClaims))
 
-    return createPresentation(
+    return internalCreatePresentation(
         credential = credential,
-        claims = credentialClaimsJson,
         releaseClaims = releaseClaimsJson,
         audience = audience,
         nonce = nonce,
@@ -437,20 +433,11 @@ inline fun <reified T> createPresentation(
 }
 
 /**
- * This method takes an SD-JWT and its disclosures and
- * creates a presentation that discloses only the desired claims.
- *
- * @param credential    A string containing the SD-JWT and its disclosures concatenated by a period character
- * @param claims        A JSONObject of the Credential containing all claims, used for validation
- * @param releaseClaims A JSONObject contains a non-null value for every claim that should be presented
- * @param audience      Optional: The value of the "aud" claim in the holder JWT
- * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
- * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
- * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
+ * @suppress
+ * This method is not for API users.
  */
-inline fun createPresentation(
+inline fun internalCreatePresentation(
     credential: String,
-    claims: JSONObject,
     releaseClaims: JSONObject,
     audience: String? = null,
     nonce: String? = null,
@@ -462,10 +449,6 @@ inline fun createPresentation(
     // Parse credential into formats suitable to process it
     val sdJwt = parseJWT(credentialParts[0])
     val (disclosureMap, _) = parseDisclosures(credentialParts)
-
-    if(!validateJSON(releaseClaims, claims)){
-        throw Exception("Structures of claims and releaseClaims do not match!")
-    }
 
     checkDisclosuresMatchingDigest(sdJwt, disclosureMap)
 
@@ -504,6 +487,38 @@ inline fun createPresentation(
     return presentation
 }
 
+/**
+ * This method takes an SD-JWT and its disclosures and
+ * creates a presentation that discloses only the desired claims.
+ *
+ * @param credential    A string containing the SD-JWT and its disclosures concatenated by a period character
+ * @param claims        A JSONObject of the Credential containing all claims, used for validation
+ * @param releaseClaims A JSONObject contains a non-null value for every claim that should be presented
+ * @param audience      Optional: The value of the "aud" claim in the holder JWT
+ * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
+ * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
+ * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
+ */
+inline fun createPresentation(
+    credential: String,
+    claims: JSONObject,
+    releaseClaims: JSONObject,
+    audience: String? = null,
+    nonce: String? = null,
+    holderKey: JWK? = null
+): String {
+    if(!validateJSON(releaseClaims, claims)){
+        throw Exception("Structures of claims and releaseClaims do not match!")
+    }
+
+    return internalCreatePresentation(
+        credential = credential,
+        releaseClaims = releaseClaims,
+        audience = audience,
+        nonce = nonce,
+        holderKey = holderKey
+    )
+}
 
 /**
  * @suppress

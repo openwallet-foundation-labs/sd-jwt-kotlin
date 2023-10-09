@@ -82,7 +82,7 @@ internal class Debugging {
             secretClubMembership = ""
         )
 
-        val presentationGen = createPresentation(credentialGen, claims, releaseClaims, verifier, nonce, holderKey)
+        val presentationGen = createPresentation(credentialGen, releaseClaims, verifier, nonce, holderKey)
 
         println("====================== Wallet ======================")
         println("Generated presentation: $presentationGen")
@@ -116,7 +116,7 @@ internal class Debugging {
 
         val releaseClaims =
             SimpleTestCredential(iss = "", givenName = "", email = "", age = 0) // Non-null claims will be revealed
-        val presentation = createPresentation(credential, claims, releaseClaims)
+        val presentation = createPresentation(credential, releaseClaims)
 
         println("====================== Wallet ======================")
         println("Presentation: $presentation")
@@ -182,7 +182,7 @@ internal class Debugging {
 
         val releaseClaims = EmailCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject(email = ""))
         val presentation =
-            createPresentation(credential, userClaims, releaseClaims, "https://nextcloud.example.com", "1234", holderKey)
+            createPresentation(credential, releaseClaims, "https://nextcloud.example.com", "1234", holderKey)
         println("Presentation: $presentation")
         println()
 
