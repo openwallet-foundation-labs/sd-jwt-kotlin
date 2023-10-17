@@ -297,14 +297,23 @@ fun validateJSON(
  */
 fun validateJSONArray(firstArray: JSONArray, secondArray: JSONArray): Boolean {
     for (i in 0 until firstArray.length()) {
-        if (firstArray[i] is JSONObject && secondArray[i] is JSONObject) {
-            if (!validateJSON(firstArray.getJSONObject(i), secondArray.getJSONObject(i))) {
+        val firstArrayElement = firstArray[i]
+        val secondArrayElement = secondArray[i]
+
+        if (firstArrayElement is JSONObject && secondArrayElement is JSONObject) {
+            if (!validateJSON(firstArrayElement, secondArrayElement)) {
                 return false
             }
-        } else if (firstArray[i] is JSONArray && secondArray[i] is JSONArray) {
-            if (!validateJSONArray(firstArray.getJSONArray(i), secondArray.getJSONArray(i))) {
+        } else if (firstArrayElement is JSONArray && secondArrayElement is JSONArray) {
+            if (!validateJSONArray(firstArrayElement, secondArrayElement)) {
                 return false
             }
+        } else if (
+            firstArrayElement is JSONArray && secondArrayElement !is JSONArray ||
+            firstArrayElement !is JSONArray && secondArrayElement is JSONArray
+        ) {
+            // value types should match
+            return false
         }
     }
 
@@ -507,7 +516,7 @@ inline fun createPresentation(
     nonce: String? = null,
     holderKey: JWK? = null
 ): String {
-    if(!validateJSON(releaseClaims, claims)){
+    if (!validateJSON(releaseClaims, claims)) {
         throw Exception("Structures of claims and releaseClaims do not match!")
     }
 

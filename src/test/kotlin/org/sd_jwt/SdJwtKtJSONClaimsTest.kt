@@ -411,11 +411,7 @@ class SdJwtKtJSONClaimsTest {
             )
         }
             .also {
-                it.message?.let {
-                    assert(
-                        it.contains("Structures of userClaims and discloseStructure do not match!")
-                    )
-                }
+                it.message?.contains("Structures of userClaims and discloseStructure do not match!")
             }
     }
 
@@ -448,11 +444,120 @@ class SdJwtKtJSONClaimsTest {
             )
         }
             .also {
-                it.message?.let {
-                    assert(
-                        it.contains("Structures of userClaims and discloseStructure do not match!")
+                it.message?.contains("Structures of userClaims and discloseStructure do not match!")
+            }
+    }
+
+    @Test
+    fun testCreateSimpleCredentialAsJson_jsonArray3_ko() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("nicknames", JSONObject(
+                    mapOf(
+                        Pair("name", "Momo")
                     )
-                }
+                ))
+            )
+        )
+
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("first_name", ""),
+                Pair("last_name", ""),
+                Pair("age", ""),
+                Pair("nicknames", JSONArray(
+                    listOf(
+                        JSONObject(
+                            mapOf(
+                                Pair("name", "")
+                            )
+                        ),
+                        JSONObject(
+                            mapOf(
+                                Pair("name", "")
+                            )
+                        )
+                    )
+                ))
+            )
+        )
+        assertThrows<Exception> {
+            createCredential(
+                userClaims = claims,
+                issuerKey = issuerKey,
+                discloseStructure = discloseStructure
+            )
+        }
+            .also {
+                it.message?.contains("Structures of userClaims and discloseStructure do not match!")
+            }
+    }
+
+    @Test
+    fun testCreateSimpleCredentialAsJson_jsonArray4_ko() {
+        val claims = JSONObject(
+            mapOf(
+                Pair("iss", "$issuer"),
+                Pair("first_name", "Max"),
+                Pair("last_name", "Muster"),
+                Pair("age", "33"),
+                Pair("nicknames", JSONArray(
+                    listOf(
+                        JSONArray(
+                            listOf(
+                                JSONObject(
+                                    mapOf(
+                                        Pair("name", "Mimo")
+                                    )
+                                )
+                            )
+                        ),
+                        JSONObject(
+                            mapOf(
+                                Pair("name", "Momo")
+                            )
+                        )
+                    )
+                ))
+            )
+        )
+
+        val discloseStructure = JSONObject(
+            mapOf(
+                Pair("iss", ""),
+                Pair("first_name", ""),
+                Pair("last_name", ""),
+                Pair("age", ""),
+                Pair("nicknames", JSONArray(
+                    listOf(
+                        JSONObject(
+                            mapOf(
+                                Pair("name", "")
+                            )
+                        ),
+                        JSONObject(
+                            mapOf(
+                                Pair("name", "")
+                            )
+                        )
+                    )
+                ))
+            )
+        )
+        assertThrows<Exception> {
+            createCredential(
+                userClaims = claims,
+                issuerKey = issuerKey,
+                discloseStructure = discloseStructure
+            )
+        }
+            .also {
+                it.message?.contains("Structures of userClaims and discloseStructure do not match!")
             }
     }
 }
