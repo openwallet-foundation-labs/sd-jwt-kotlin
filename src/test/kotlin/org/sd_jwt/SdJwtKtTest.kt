@@ -5,7 +5,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.test.*
 
 internal class SdJwtKtTest {
 
@@ -35,7 +34,7 @@ internal class SdJwtKtTest {
 
     @Test
     fun testSimpleCredentialWithNonceAud() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, null, "Simple Credential With Aud and Nonce")
+        val testConfig = TestConfig(trustedIssuers, issuerKey,null, issuer, verifier, nonce, null, "Simple Credential With Aud and Nonce")
 
         val claims = SimpleTestCredential(issuer,"Alice", "Wonderland", "alice@example.com", false, 21)
         val discloseStructure = SimpleTestCredential(iss = "")
@@ -49,7 +48,23 @@ internal class SdJwtKtTest {
 
     @Test
     fun testSimpleCredential() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, null, null, null, "Simple Credential")
+        val testConfig = TestConfig(trustedIssuers, issuerKey, null, issuer, null, null, null, "Simple Credential")
+
+        val claims = SimpleTestCredential(issuer, "Alice", "Wonderland", "alice@example.com", false, 21)
+        val discloseStructure = SimpleTestCredential(iss = "")
+        val releaseClaims = SimpleTestCredential(iss = "", givenName = "", email = "", age = 0)
+        val expectedClaims = SimpleTestCredential(iss = issuer, givenName = "Alice", email = "alice@example.com", age = 21)
+
+        val expectedClaimsKeys = listOf("given_name", "email", "age")
+
+        testRoutine(expectedClaimsKeys, expectedClaims, claims, discloseStructure, releaseClaims, testConfig)
+    }
+
+    @Test
+    fun testSimpleCredentialStaticSigner() {
+        val signer = StaticJWSTestSigner()
+        val newTrustedIssuers = mutableMapOf<String, String>(issuer to signer.publicJWK.toJSONString())
+        val testConfig = TestConfig(newTrustedIssuers, null, signer, issuer, null, null, null, "Simple Credential Static Signer")
 
         val claims = SimpleTestCredential(issuer, "Alice", "Wonderland", "alice@example.com", false, 21)
         val discloseStructure = SimpleTestCredential(iss = "")
@@ -84,7 +99,7 @@ internal class SdJwtKtTest {
     @Test
     fun testAdvancedCredential() {
         val testConfig =
-            TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Advanced Credential")
+            TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Advanced Credential")
 
        val claims = IdCredential(
            issuer,
@@ -112,7 +127,7 @@ internal class SdJwtKtTest {
     @Test
     fun testAdvancedCredentialStructured() {
         val testConfig =
-            TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Advanced Credential Structured")
+            TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Advanced Credential Structured")
         val claims = IdCredential(
             issuer,
             "Alice",

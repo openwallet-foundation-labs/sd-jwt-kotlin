@@ -67,7 +67,7 @@ internal class AdvancedTest {
 
     @Test
     internal fun simpleTest() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Simple Test")
+        val testConfig = TestConfig(trustedIssuers, null, null, issuer, verifier, nonce, holderKey, "Simple Test")
         val claims = SimpleCredential(
             issuer,
             "6c5c0a49-b589-431d-bae7-219122a9ec2c",
@@ -95,7 +95,7 @@ internal class AdvancedTest {
     @Test
     internal fun simpleStructuredTest() {
         val testConfig =
-            TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Simple Structured Test")
+            TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Simple Structured Test")
         val claims = SimpleCredential(
             issuer,
             "6c5c0a49-b589-431d-bae7-219122a9ec2c",
@@ -206,7 +206,7 @@ internal class AdvancedTest {
 
     @Test
     internal fun complexTest() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Complex Test")
+        val testConfig = TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Complex Test")
         val claims = ComplexCredential(
             iss = issuer,
             verifiedClaims = VerifiedClaims(
@@ -313,7 +313,7 @@ internal class AdvancedTest {
 
     @Test
     internal fun complexRecursiveTest() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey, issuer, verifier, nonce, holderKey, "Recursive Complex Test")
+        val testConfig = TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Recursive Complex Test")
         val claims = ComplexRecursiveCredential(
             iss = issuer,
             verifiedClaims = RecursiveVerifiedClaims(
