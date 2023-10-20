@@ -198,7 +198,7 @@ inline fun <reified T> createCredential(
  * @param userClaims        A JSONObject that contains the user's claims
  * @param issuerKey         The issuer's private key to sign the SD-JWT
  * @param holderPubKey      Optional: The holder's public key if holder binding is required
- * @param discloseStructure Optional: JSONObject, must have the same structure as "userClaims". Claims that should be disclosable separately should be non-null
+ * @param discloseStructure Optional: Optional: JSONObject that has a non-null value for each element that should be disclosable separately
  * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
  * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
  * @return                  Serialized SD-JWT + disclosures to send to the holder
@@ -211,10 +211,6 @@ inline fun createCredential(
     sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
-    if (!validateJSON(discloseStructure, userClaims)) {
-        throw Exception("Structures of userClaims and discloseStructure do not match!")
-    }
-
     val disclosures = mutableListOf<String>()
     val sdClaimsSet = createSdClaims(userClaims, discloseStructure, disclosures, decoy) as JSONObject
 
@@ -242,82 +238,6 @@ inline fun createCredential(
     val sdJwtEncoded = buildJWT(sdJwtPayload.build(), issuerKey, sdJwtHeader)
 
     return sdJwtEncoded + SEPARATOR + disclosures.joinToString(SEPARATOR)
-}
-
-/**
- * @suppress
- * This method is not for API users.
- *
- * Verifies if keys (and sub keys) of firstJson exist in secondJson
- *
- */
-fun validateJSON(
-    firstJson: JSONObject,
-    secondJson: JSONObject
-): Boolean {
-    val keys = firstJson.keys()
-
-    while (keys.hasNext()) {
-        val key = keys.next() as String
-
-        if (secondJson.has(key).not()) {
-            return false
-        }
-
-        val value1 = firstJson[key]
-        val value2 = secondJson[key]
-
-        // Recursively check the structure for nested JSONObjects or JSONArrays
-        if (value1 is JSONObject && value2 is JSONObject) {
-            if (!validateJSON(value1, value2)) {
-                return false
-            }
-        } else if (value1 is JSONArray && value2 is JSONArray) {
-            if (!validateJSONArray(value1, value2)) {
-                return false
-            }
-        } else if (
-            value1 is JSONArray && value2 !is JSONArray ||
-            value1 !is JSONArray && value2 is JSONArray
-        ) {
-            // value types should match
-            return false
-        }
-    }
-
-    return true
-}
-
-/**
- * @suppress
- * This method is not for API users.
- *
- * Verifies if elements of firstArray and secondArray are matching
- *
- */
-fun validateJSONArray(firstArray: JSONArray, secondArray: JSONArray): Boolean {
-    for (i in 0 until firstArray.length()) {
-        val firstArrayElement = firstArray[i]
-        val secondArrayElement = secondArray[i]
-
-        if (firstArrayElement is JSONObject && secondArrayElement is JSONObject) {
-            if (!validateJSON(firstArrayElement, secondArrayElement)) {
-                return false
-            }
-        } else if (firstArrayElement is JSONArray && secondArrayElement is JSONArray) {
-            if (!validateJSONArray(firstArrayElement, secondArrayElement)) {
-                return false
-            }
-        } else if (
-            firstArrayElement is JSONArray && secondArrayElement !is JSONArray ||
-            firstArrayElement !is JSONArray && secondArrayElement is JSONArray
-        ) {
-            // value types should match
-            return false
-        }
-    }
-
-    return true
 }
 
 /**
@@ -501,7 +421,6 @@ inline fun internalCreatePresentation(
  * creates a presentation that discloses only the desired claims.
  *
  * @param credential    A string containing the SD-JWT and its disclosures concatenated by a period character
- * @param claims        A JSONObject of the Credential containing all claims, used for validation
  * @param releaseClaims A JSONObject contains a non-null value for every claim that should be presented
  * @param audience      Optional: The value of the "aud" claim in the holder JWT
  * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
@@ -510,16 +429,11 @@ inline fun internalCreatePresentation(
  */
 inline fun createPresentation(
     credential: String,
-    claims: JSONObject,
     releaseClaims: JSONObject,
     audience: String? = null,
     nonce: String? = null,
     holderKey: JWK? = null
 ): String {
-    if (!validateJSON(releaseClaims, claims)) {
-        throw Exception("Structures of claims and releaseClaims do not match!")
-    }
-
     return internalCreatePresentation(
         credential = credential,
         releaseClaims = releaseClaims,
