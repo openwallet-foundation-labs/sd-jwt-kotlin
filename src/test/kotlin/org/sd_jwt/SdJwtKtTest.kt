@@ -24,6 +24,7 @@ internal class SdJwtKtTest {
     private val issuerKeyJson =
         """{"kty":"OKP","d":"Pp1foKt6rJAvx0igrBEfOgrT0dgMVQDHmgJZbm2h518","crv":"Ed25519","kid":"IssuerKey","x":"1NYF4EFS2Ov9hqt35fVt2J-dktLV29hs8UFjxbOXnho"}"""
     private val issuerKey = OctetKeyPair.parse(issuerKeyJson)
+    private val signer = KeyBasedSdJwtSigner(issuerKey)
     private val holderKeyJson =
         """{"kty":"OKP","d":"8G6whDz1owU1k7-TqtP3xEMasdI3t3j2AvpvXVwwrHQ","crv":"Ed25519","kid":"HolderKey","x":"s6gVLINLcCGhGEDTf_v1zMluLZcXj4GOXAfQlOWZM9Q"}"""
     private val holderKey = OctetKeyPair.parse(holderKeyJson)
@@ -34,7 +35,7 @@ internal class SdJwtKtTest {
 
     @Test
     fun testSimpleCredentialWithNonceAud() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey,null, issuer, verifier, nonce, null, "Simple Credential With Aud and Nonce")
+        val testConfig = TestConfig(trustedIssuers, signer, issuer, verifier, nonce, null, "Simple Credential With Aud and Nonce")
 
         val claims = SimpleTestCredential(issuer,"Alice", "Wonderland", "alice@example.com", false, 21)
         val discloseStructure = SimpleTestCredential(iss = "")
@@ -48,23 +49,7 @@ internal class SdJwtKtTest {
 
     @Test
     fun testSimpleCredential() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey, null, issuer, null, null, null, "Simple Credential")
-
-        val claims = SimpleTestCredential(issuer, "Alice", "Wonderland", "alice@example.com", false, 21)
-        val discloseStructure = SimpleTestCredential(iss = "")
-        val releaseClaims = SimpleTestCredential(iss = "", givenName = "", email = "", age = 0)
-        val expectedClaims = SimpleTestCredential(iss = issuer, givenName = "Alice", email = "alice@example.com", age = 21)
-
-        val expectedClaimsKeys = listOf("given_name", "email", "age")
-
-        testRoutine(expectedClaimsKeys, expectedClaims, claims, discloseStructure, releaseClaims, testConfig)
-    }
-
-    @Test
-    fun testSimpleCredentialStaticSigner() {
-        val signer = StaticJWSTestSigner()
-        val newTrustedIssuers = mutableMapOf<String, String>(issuer to signer.publicJWK.toJSONString())
-        val testConfig = TestConfig(newTrustedIssuers, null, signer, issuer, null, null, null, "Simple Credential Static Signer")
+        val testConfig = TestConfig(trustedIssuers, signer, issuer, null, null, null, "Simple Credential")
 
         val claims = SimpleTestCredential(issuer, "Alice", "Wonderland", "alice@example.com", false, 21)
         val discloseStructure = SimpleTestCredential(iss = "")
@@ -99,7 +84,7 @@ internal class SdJwtKtTest {
     @Test
     fun testAdvancedCredential() {
         val testConfig =
-            TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Advanced Credential")
+            TestConfig(trustedIssuers, signer, issuer, verifier, nonce, holderKey, "Advanced Credential")
 
        val claims = IdCredential(
            issuer,
@@ -127,7 +112,7 @@ internal class SdJwtKtTest {
     @Test
     fun testAdvancedCredentialStructured() {
         val testConfig =
-            TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Advanced Credential Structured")
+            TestConfig(trustedIssuers, signer, issuer, verifier, nonce, holderKey, "Advanced Credential Structured")
         val claims = IdCredential(
             issuer,
             "Alice",

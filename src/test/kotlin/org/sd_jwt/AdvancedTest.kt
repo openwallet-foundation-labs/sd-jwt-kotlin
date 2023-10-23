@@ -25,6 +25,7 @@ internal class AdvancedTest {
         }
     """.trimIndent()
     private val issuerKey = RSAKey.parse(issuerKeyJson)
+    private val signer = KeyBasedSdJwtSigner(issuerKey)
     private val holderKeyJson = """
         {
             "d": "kJSUdxpBVUHSSe0HfJfeO3q-iDgjXlS9zEZmgifbUPtjcT8recXwmwwRTZzhb9avNy8tyL8i1dJooAeMnudECz4u5zRY6VIXnSkO2cSPhZ-fyXPpC1BAnzf8RSn8rGu_auRrfyq3dfYw6dLt7dzA-hsUANzD63x8Tt4v9eiwsp65BlR1pvf0BIV3WMGLtgx0hTUQBUxIx0hgDG439a0gLY0T86m9LEMCcVXONNTWbScQf5KsHLWQgbjCeUc_4szy4RwsaFnF40uut_fdZyM_O1pOsfYJLa8fmN3FC72l4UdJvtFXWuH-20ywTEOKISF7CRx5BsifOnyEMTeAVEE9wQ",
@@ -67,7 +68,7 @@ internal class AdvancedTest {
 
     @Test
     internal fun simpleTest() {
-        val testConfig = TestConfig(trustedIssuers, null, null, issuer, verifier, nonce, holderKey, "Simple Test")
+        val testConfig = TestConfig(trustedIssuers, signer, issuer, verifier, nonce, holderKey, "Simple Test")
         val claims = SimpleCredential(
             issuer,
             "6c5c0a49-b589-431d-bae7-219122a9ec2c",
@@ -95,7 +96,7 @@ internal class AdvancedTest {
     @Test
     internal fun simpleStructuredTest() {
         val testConfig =
-            TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Simple Structured Test")
+            TestConfig(trustedIssuers, signer, issuer, verifier, nonce, holderKey, "Simple Structured Test")
         val claims = SimpleCredential(
             issuer,
             "6c5c0a49-b589-431d-bae7-219122a9ec2c",
@@ -206,7 +207,7 @@ internal class AdvancedTest {
 
     @Test
     internal fun complexTest() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Complex Test")
+        val testConfig = TestConfig(trustedIssuers, signer, issuer, verifier, nonce, holderKey, "Complex Test")
         val claims = ComplexCredential(
             iss = issuer,
             verifiedClaims = VerifiedClaims(
@@ -313,7 +314,7 @@ internal class AdvancedTest {
 
     @Test
     internal fun complexRecursiveTest() {
-        val testConfig = TestConfig(trustedIssuers, issuerKey, null, issuer, verifier, nonce, holderKey, "Recursive Complex Test")
+        val testConfig = TestConfig(trustedIssuers, signer, issuer, verifier, nonce, holderKey, "Recursive Complex Test")
         val claims = ComplexRecursiveCredential(
             iss = issuer,
             verifiedClaims = RecursiveVerifiedClaims(

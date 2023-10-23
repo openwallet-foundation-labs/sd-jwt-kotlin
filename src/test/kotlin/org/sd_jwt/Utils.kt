@@ -6,8 +6,7 @@ import kotlin.test.assertEquals
 
 data class TestConfig(
     val trustedIssuers: Map<String, String>,
-    val issuerKey: JWK?,
-    val signer: StaticJWSTestSigner?,
+    val signer: SdJwtSigner,
     val issuer: String,
     val verifier: String?,
     val nonce: String?,
@@ -30,13 +29,7 @@ inline fun <reified T>  testRoutine(
     // Initialization
     val holderPubKey = testConfig.holderKey?.toPublicJWK()
 
-    val credentialGen = if (testConfig.issuerKey != null) {
-        createCredential(claims, testConfig.issuerKey, holderPubKey, discloseStructure)
-    } else if(testConfig.signer != null) {
-        createCredential(claims, testConfig.signer, holderPubKey, discloseStructure)
-    } else {
-        throw Exception("Either issuer key or signer must be provided")
-    }
+    val credentialGen = createCredential(claims, testConfig.signer, holderPubKey, discloseStructure)
 
     println("====================== Issuer ======================")
     println("Generated credential: $credentialGen")
