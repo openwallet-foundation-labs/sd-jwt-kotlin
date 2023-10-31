@@ -15,23 +15,23 @@ import com.nimbusds.jose.jwk.*
  */
 class KeyBasedSdJwtSigner(private val key: JWK): SdJwtSigner {
     private val signer: JWSSigner
-    private val header: JWSHeader.Builder
+    private val header: JWSHeader
 
     init {
         when (key.keyType) {
             KeyType.OKP -> {
                 signer = Ed25519Signer(key as OctetKeyPair)
-                header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(key.keyID)
+                header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(key.keyID).build()
             }
 
             KeyType.RSA -> {
                 signer = RSASSASigner(key as RSAKey)
-                header = JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID)
+                header = JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID).build()
             }
 
             KeyType.EC -> {
                 signer = ECDSASigner(key as ECKey)
-                header = JWSHeader.Builder(signer.supportedECDSAAlgorithm()).keyID(key.keyID)
+                header = JWSHeader.Builder(signer.supportedECDSAAlgorithm()).keyID(key.keyID).build()
             }
 
             else -> {
@@ -40,7 +40,7 @@ class KeyBasedSdJwtSigner(private val key: JWK): SdJwtSigner {
         }
     }
     override fun baseHeader(): JWSHeader.Builder {
-        return header
+        return JWSHeader.Builder(header)
     }
 
     override fun jwsSigner(): JWSSigner {
