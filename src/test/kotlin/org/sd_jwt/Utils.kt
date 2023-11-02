@@ -42,7 +42,7 @@ inline fun <reified T>  testRoutine(
     )
 }
 
-inline fun testRoutine(
+fun testRoutine(
     expectedClaimsKeys: List<String>,
     expectedClaims: JSONObject,
     claims: JSONObject,

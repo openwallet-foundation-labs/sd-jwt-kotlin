@@ -202,7 +202,7 @@ inline fun <reified T> createCredential(
  * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
  * @return                  Serialized SD-JWT + disclosures to send to the holder
  */
-inline fun createCredential(
+fun createCredential(
     userClaims: JSONObject,
     signer: SdJwtSigner,
     holderPubKey: JWK? = null,
@@ -365,7 +365,7 @@ inline fun <reified T> createPresentation(
  * @suppress
  * This method is not for API users.
  */
-inline fun internalCreatePresentation(
+fun internalCreatePresentation(
     credential: String,
     releaseClaims: JSONObject,
     audience: String? = null,
@@ -430,7 +430,7 @@ inline fun internalCreatePresentation(
  * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
  * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
  */
-inline fun createPresentation(
+fun createPresentation(
     credential: String,
     releaseClaims: JSONObject,
     audience: String? = null,
@@ -557,7 +557,7 @@ inline fun <reified T> verifyPresentation(
  * @param verifyHolderBinding   Optional: Determine whether holder binding is required by the verifier's policy (default: true)
  * @return                      A JSONObject of the credential class filled with the disclosed claims
  */
-inline fun verifyPresentation(
+fun verifyPresentation(
     presentation: String,
     trustedIssuer: Map<String, String>,
     expectedNonce: String? = null,
