@@ -173,29 +173,6 @@ inline fun <reified T> createCredential(
     decoy: Boolean = true
 ): String {
     val keyBasedSdJwtSigner = KeyBasedSdJwtSigner(issuerKey)
-    return createCredential(userClaims, keyBasedSdJwtSigner, holderPubKey, discloseStructure, sdJwtHeader, decoy)
-}
-
-/**
- * This method creates a SD-JWT credential that contains the claims
- * passed to the method and is signed by the provided signer.
- *
- * @param userClaims        A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
- * @param signer            A concrete signer instance for signing the SD-JWT as the issuer
- * @param holderPubKey      Optional: The holder's public key if holder binding is required
- * @param discloseStructure Optional: Class that has a non-null value for each object that should be disclosable separately
- * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
- * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
- * @return                  Serialized SD-JWT + disclosures to send to the holder
- */
-inline fun <reified T> createCredential(
-    userClaims: T,
-    signer: SdJwtSigner,
-    holderPubKey: JWK? = null,
-    discloseStructure: T? = null,
-    sdJwtHeader: SdJwtHeader = SdJwtHeader(),
-    decoy: Boolean = true
-): String {
     val jsonUserClaims = JSONObject(Json.encodeToString(userClaims))
     val jsonDiscloseStructure = if (discloseStructure != null) {
         JSONObject(Json.encodeToString(discloseStructure))
@@ -203,8 +180,38 @@ inline fun <reified T> createCredential(
         JSONObject()
     }
 
+    return createCredential(
+        userClaims = jsonUserClaims,
+        signer = keyBasedSdJwtSigner,
+        holderPubKey = holderPubKey,
+        discloseStructure = jsonDiscloseStructure,
+        sdJwtHeader = sdJwtHeader,
+        decoy = decoy
+    )
+}
+
+/**
+ * This method creates a SD-JWT credential that contains the claims
+ * passed to the method and is signed by the provided signer.
+ *
+ * @param userClaims        A JSONObject that contains the user's claims (all types must be nullable and default value must be null)
+ * @param signer            A concrete signer instance for signing the SD-JWT as the issuer
+ * @param holderPubKey      Optional: The holder's public key if holder binding is required
+ * @param discloseStructure Optional: JSONObject that has a non-null value for each element that should be disclosable separately
+ * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
+ * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
+ * @return                  Serialized SD-JWT + disclosures to send to the holder
+ */
+inline fun createCredential(
+    userClaims: JSONObject,
+    signer: SdJwtSigner,
+    holderPubKey: JWK? = null,
+    discloseStructure: JSONObject = JSONObject(),
+    sdJwtHeader: SdJwtHeader = SdJwtHeader(),
+    decoy: Boolean = true
+): String {
     val disclosures = mutableListOf<String>()
-    val sdClaimsSet = createSdClaims(jsonUserClaims, jsonDiscloseStructure, disclosures, decoy) as JSONObject
+    val sdClaimsSet = createSdClaims(userClaims, discloseStructure, disclosures, decoy) as JSONObject
 
     val sdJwtPayload = JWTClaimsSet.Builder()
 
@@ -343,17 +350,38 @@ inline fun <reified T> createPresentation(
     nonce: String? = null,
     holderKey: JWK? = null,
 ): String {
+    val releaseClaimsJson = JSONObject(Json.encodeToString(releaseClaims))
+
+    return internalCreatePresentation(
+        credential = credential,
+        releaseClaims = releaseClaimsJson,
+        audience = audience,
+        nonce = nonce,
+        holderKey = holderKey
+    )
+}
+
+/**
+ * @suppress
+ * This method is not for API users.
+ */
+inline fun internalCreatePresentation(
+    credential: String,
+    releaseClaims: JSONObject,
+    audience: String? = null,
+    nonce: String? = null,
+    holderKey: JWK? = null
+): String {
     val credentialParts = credential.split(SEPARATOR)
     var presentation = credentialParts[0]
 
     // Parse credential into formats suitable to process it
     val sdJwt = parseJWT(credentialParts[0])
     val (disclosureMap, _) = parseDisclosures(credentialParts)
-    val releaseClaimsParsed = JSONObject(Json.encodeToString(releaseClaims))
 
     checkDisclosuresMatchingDigest(sdJwt, disclosureMap)
 
-    val releaseDisclosures = findDisclosures(sdJwt, releaseClaimsParsed, disclosureMap)
+    val releaseDisclosures = findDisclosures(sdJwt, releaseClaims, disclosureMap)
 
     if (releaseDisclosures.isNotEmpty()) {
         presentation += SEPARATOR + releaseDisclosures.joinToString(SEPARATOR)
@@ -389,6 +417,33 @@ inline fun <reified T> createPresentation(
     }
 
     return presentation
+}
+
+/**
+ * This method takes an SD-JWT and its disclosures and
+ * creates a presentation that discloses only the desired claims.
+ *
+ * @param credential    A string containing the SD-JWT and its disclosures concatenated by a period character
+ * @param releaseClaims A JSONObject contains a non-null value for every claim that should be presented
+ * @param audience      Optional: The value of the "aud" claim in the holder JWT
+ * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
+ * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
+ * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
+ */
+inline fun createPresentation(
+    credential: String,
+    releaseClaims: JSONObject,
+    audience: String? = null,
+    nonce: String? = null,
+    holderKey: JWK? = null
+): String {
+    return internalCreatePresentation(
+        credential = credential,
+        releaseClaims = releaseClaims,
+        audience = audience,
+        nonce = nonce,
+        holderKey = holderKey
+    )
 }
 
 /**
@@ -481,6 +536,34 @@ inline fun <reified T> verifyPresentation(
     expectedAud: String? = null,
     verifyHolderBinding: Boolean = true,
 ): T {
+
+    val sdClaimsParsedJson = verifyPresentation(
+        presentation, trustedIssuer, expectedNonce, expectedAud, verifyHolderBinding
+    )
+
+    val format = Json { ignoreUnknownKeys = true }
+    return format.decodeFromString(sdClaimsParsedJson.toString())
+}
+
+/**
+ * The method takes a serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb;, parses it and checks
+ * the validity of the credential. The disclosed claims are returned in an object
+ * of the credential class.
+ *
+ * @param presentation          Serialized presentation containing the SD-JWT and the disclosures
+ * @param trustedIssuer         A map that contains issuer urls and the corresponding JWKs in JSON format serialized as strings
+ * @param expectedNonce         Optional: The value that is expected in the nonce claim of the holder JWT
+ * @param expectedAud           Optional: The value that is expected in the aud claim of the holder JWT
+ * @param verifyHolderBinding   Optional: Determine whether holder binding is required by the verifier's policy (default: true)
+ * @return                      A JSONObject of the credential class filled with the disclosed claims
+ */
+inline fun verifyPresentation(
+    presentation: String,
+    trustedIssuer: Map<String, String>,
+    expectedNonce: String? = null,
+    expectedAud: String? = null,
+    verifyHolderBinding: Boolean = true,
+): JSONObject {
     val presentationSplit = presentation.split(SEPARATOR)
     val (disclosureMap, holderJwt) = parseDisclosures(presentationSplit, 1)
 
@@ -508,8 +591,16 @@ inline fun <reified T> verifyPresentation(
 
     val sdClaimsParsed = verifyAndBuildCredential(sdJwtParsed, disclosureMap)
 
-    val format = Json { ignoreUnknownKeys = true }
-    return format.decodeFromString(sdClaimsParsed.toString())
+    // Exclude technical claims
+    val sdClaimsParsedFiltered = JSONObject(sdClaimsParsed.toString()).toMap().filterKeys { key ->
+        key !in setOf(
+            SD_DIGEST_KEY,
+            DIGEST_ALG_KEY,
+            HOLDER_BINDING_KEY
+        )
+    }
+
+    return JSONObject(sdClaimsParsedFiltered)
 }
 
 /**
