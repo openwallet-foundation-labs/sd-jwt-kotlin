@@ -148,16 +148,11 @@ fun createSdClaims(
 }
 
 /**
- * [LEGACY METHOD]
- *
- * This method exists for backwards compatibility reasons.
- * It directly expects a private key for signing a newly created SD-JWT.
- *
- * New implementations are advised to use the other `createCredential` method which accepts a signer instance for
- * enhanced flexibility and security.
+ * This method creates a SD-JWT credential that contains the claims
+ * passed to the method and is signed by the provided signer.
  *
  * @param userClaims        A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
- * @param issuerKey         The issuer's private key to sign the SD-JWT
+ * @param signer            A concrete signer instance for signing the SD-JWT as the issuer
  * @param holderPubKey      Optional: The holder's public key if holder binding is required
  * @param discloseStructure Optional: Class that has a non-null value for each object that should be disclosable separately
  * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
@@ -166,13 +161,12 @@ fun createSdClaims(
  */
 inline fun <reified T> createCredential(
     userClaims: T,
-    issuerKey: JWK,
+    signer: SdJwtSigner,
     holderPubKey: JWK? = null,
     discloseStructure: T? = null,
     sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
-    val keyBasedSdJwtSigner = KeyBasedSdJwtSigner(issuerKey)
     val jsonUserClaims = JSONObject(Json.encodeToString(userClaims))
     val jsonDiscloseStructure = if (discloseStructure != null) {
         JSONObject(Json.encodeToString(discloseStructure))
@@ -182,7 +176,7 @@ inline fun <reified T> createCredential(
 
     return createCredential(
         userClaims = jsonUserClaims,
-        signer = keyBasedSdJwtSigner,
+        signer = signer,
         holderPubKey = holderPubKey,
         discloseStructure = jsonDiscloseStructure,
         sdJwtHeader = sdJwtHeader,

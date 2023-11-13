@@ -17,6 +17,7 @@ internal class Debugging {
     private val issuerKeyJson =
         """{"kty":"OKP","d":"Pp1foKt6rJAvx0igrBEfOgrT0dgMVQDHmgJZbm2h518","crv":"Ed25519","kid":"IssuerKey","x":"1NYF4EFS2Ov9hqt35fVt2J-dktLV29hs8UFjxbOXnho"}"""
     private val issuerKey = OctetKeyPair.parse(issuerKeyJson)
+    private val signer = KeyBasedSdJwtSigner(issuerKey)
     private val holderKeyJson =
         """{"kty":"OKP","d":"8G6whDz1owU1k7-TqtP3xEMasdI3t3j2AvpvXVwwrHQ","crv":"Ed25519","kid":"HolderKey","x":"s6gVLINLcCGhGEDTf_v1zMluLZcXj4GOXAfQlOWZM9Q"}"""
     private val holderKey = OctetKeyPair.parse(holderKeyJson)
@@ -69,7 +70,7 @@ internal class Debugging {
 
         val holderPubKey = holderKey?.toPublicJWK()
 
-        val credentialGen = createCredential(claims, issuerKey, holderPubKey, discloseStructure)
+        val credentialGen = createCredential(claims, signer, holderPubKey, discloseStructure)
 
         println("====================== Issuer ======================")
         println("Generated credential: $credentialGen")
@@ -109,7 +110,7 @@ internal class Debugging {
     fun minimal() {
         val claims = SimpleTestCredential(iss = issuer, "Alice", "Wonderland", "alice@example.com", false, 21)
         val discloseStructure = SimpleTestCredential(iss = "")
-        val credential = createCredential(claims, issuerKey, discloseStructure = discloseStructure)
+        val credential = createCredential(claims, signer, discloseStructure = discloseStructure)
 
         println("====================== Issuer ======================")
         println("Credential: $credential")
@@ -150,6 +151,8 @@ internal class Debugging {
             .keyID("Issuer")
             .generate()
 
+        val signer = KeyBasedSdJwtSigner(issuerKey)
+
         val holderKey = ECKeyGenerator(Curve.P_256)
             .keyID("Holder")
             .generate()
@@ -175,12 +178,12 @@ internal class Debugging {
 
         val header = SdJwtHeader(JOSEObjectType("vc+sd-jwt"), "credential-claims-set+json")
 
-        val credential = createCredential(userClaims, issuerKey, holderKey.toPublicJWK(), discloseStructure, sdJwtHeader = header)
+        val credential = createCredential(userClaims, signer, holderKey.toPublicJWK(), discloseStructure, sdJwtHeader = header)
 
         println("Credential: $credential")
         println()
 
-        val releaseClaims = EmailCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject(email = ""))
+        val releaseClaims = EmailCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject(email = "", givenName = "", familyName = ""))
         val presentation =
             createPresentation(credential, releaseClaims, "https://nextcloud.example.com", "1234", holderKey)
         println("Presentation: $presentation")
