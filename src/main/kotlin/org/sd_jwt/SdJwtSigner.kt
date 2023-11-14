@@ -9,12 +9,11 @@ import com.nimbusds.jose.JWSSigner
 interface SdJwtSigner {
 
     /**
-     * Gets the base header builder of the JWS that is already preconfigured with parameters required for signing
-     * such as the algorithm.
+     * Gets the SD-JWT header that is configured with all parameters required for signing and SD-JWT specific parameters.
      *
-     * @return the base header builder.
+     * @return the SD-JWT header.
      */
-    fun baseHeader(): JWSHeader.Builder
+    fun sdJwtHeader(): JWSHeader
 
     /**
      * Gets the JWS signer used for signing SD-JWTs.

@@ -151,7 +151,8 @@ internal class Debugging {
             .keyID("Issuer")
             .generate()
 
-        val signer = KeyBasedSdJwtSigner(issuerKey)
+        val header = SdJwtHeader(JOSEObjectType("vc+sd-jwt"), "credential-claims-set+json")
+        val signer = KeyBasedSdJwtSigner(issuerKey, sdJwtHeader = header)
 
         val holderKey = ECKeyGenerator(Curve.P_256)
             .keyID("Holder")
@@ -176,9 +177,7 @@ internal class Debugging {
         val discloseStructure =
             EmailCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject())
 
-        val header = SdJwtHeader(JOSEObjectType("vc+sd-jwt"), "credential-claims-set+json")
-
-        val credential = createCredential(userClaims, signer, holderKey.toPublicJWK(), discloseStructure, sdJwtHeader = header)
+        val credential = createCredential(userClaims, signer, holderKey.toPublicJWK(), discloseStructure)
 
         println("Credential: $credential")
         println()

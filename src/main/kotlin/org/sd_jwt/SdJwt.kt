@@ -1,8 +1,5 @@
 package org.sd_jwt
 
-import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.PlainHeader
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.crypto.Ed25519Verifier
@@ -41,13 +38,6 @@ val DECOY_MAX = 5
 
 /** @suppress */
 const val HIDE_NAME = "59af18d6-03b8-4349-89a9-3710d51477e9:"
-
-/**
- * Data class for setting the SD-JWT header parameters typ and cty.
- * @param type: typ header parameter (example: JOSEObjectType("vc+sd-jwt"))
- * @param cty:  cty header parameter (example: "credential-claims-set+json")
- */
-data class SdJwtHeader(val type: JOSEObjectType? = null, val cty: String? = null)
 
 /**
  * @suppress
@@ -155,7 +145,6 @@ fun createSdClaims(
  * @param signer            A concrete signer instance for signing the SD-JWT as the issuer
  * @param holderPubKey      Optional: The holder's public key if holder binding is required
  * @param discloseStructure Optional: Class that has a non-null value for each object that should be disclosable separately
- * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
  * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
  * @return                  Serialized SD-JWT + disclosures to send to the holder
  */
@@ -164,7 +153,6 @@ inline fun <reified T> createCredential(
     signer: SdJwtSigner,
     holderPubKey: JWK? = null,
     discloseStructure: T? = null,
-    sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
     val jsonUserClaims = JSONObject(Json.encodeToString(userClaims))
@@ -179,7 +167,6 @@ inline fun <reified T> createCredential(
         signer = signer,
         holderPubKey = holderPubKey,
         discloseStructure = jsonDiscloseStructure,
-        sdJwtHeader = sdJwtHeader,
         decoy = decoy
     )
 }
@@ -192,7 +179,6 @@ inline fun <reified T> createCredential(
  * @param signer            A concrete signer instance for signing the SD-JWT as the issuer
  * @param holderPubKey      Optional: The holder's public key if holder binding is required
  * @param discloseStructure Optional: JSONObject that has a non-null value for each element that should be disclosable separately
- * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
  * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
  * @return                  Serialized SD-JWT + disclosures to send to the holder
  */
@@ -201,7 +187,6 @@ fun createCredential(
     signer: SdJwtSigner,
     holderPubKey: JWK? = null,
     discloseStructure: JSONObject = JSONObject(),
-    sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
     val disclosures = mutableListOf<String>()
@@ -229,7 +214,7 @@ fun createCredential(
     }
 
 
-    val sdJwtEncoded = buildJWT(sdJwtPayload.build(), signer, sdJwtHeader)
+    val sdJwtEncoded = buildJWT(sdJwtPayload.build(), signer)
 
     return sdJwtEncoded + SEPARATOR + disclosures.joinToString(SEPARATOR)
 }
@@ -444,28 +429,13 @@ fun createPresentation(
  * @suppress
  * This method is not for API users.
  */
-fun buildJWT(claims: JWTClaimsSet, signer: SdJwtSigner?, sdJwtHeader: SdJwtHeader = SdJwtHeader()): String {
+fun buildJWT(claims: JWTClaimsSet, signer: SdJwtSigner?): String {
     if (signer == null) {
         val header = PlainHeader.Builder()
-        if (sdJwtHeader.type != null) {
-            header.type(sdJwtHeader.type)
-        }
-        if (sdJwtHeader.cty != null) {
-            header.contentType(sdJwtHeader.cty)
-        }
         return PlainJWT(header.build(), claims).serialize()
     }
 
-    val header = signer.baseHeader()
-
-    if (sdJwtHeader.type != null) {
-        header.type(sdJwtHeader.type)
-    }
-    if (sdJwtHeader.cty != null) {
-        header.contentType(sdJwtHeader.cty)
-    }
-
-    val signedJwt = SignedJWT(header.build(), claims)
+    val signedJwt = SignedJWT(signer.sdJwtHeader(), claims)
     signedJwt.sign(signer.jwsSigner())
     return signedJwt.serialize()
 }
