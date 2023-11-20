@@ -319,15 +319,15 @@ fun checkDisclosuresMatchingDigest(sdJwt: JSONObject, disclosureMap: HashMap<Str
  * @param releaseClaims An object of the same class as the credential and every claim that should be disclosed contains a non-null value
  * @param audience      Optional: The value of the "aud" claim in the holder JWT
  * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
- * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
- * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
+ * @param holderSigner  Optional: A signer instance for the holder, only needed if holder binding is required
+ * @return              Serialized SD-JWT + disclosures [+ holder JWT] concatenated by a ~ character
  */
 inline fun <reified T> createPresentation(
     credential: String,
     releaseClaims: T,
     audience: String? = null,
     nonce: String? = null,
-    holderKey: JWK? = null,
+    holderSigner: SdJwtSigner? = null,
 ): String {
     val releaseClaimsJson = JSONObject(Json.encodeToString(releaseClaims))
 
@@ -336,7 +336,7 @@ inline fun <reified T> createPresentation(
         releaseClaims = releaseClaimsJson,
         audience = audience,
         nonce = nonce,
-        holderKey = holderKey
+        holderSigner = holderSigner
     )
 }
 
@@ -349,7 +349,7 @@ fun internalCreatePresentation(
     releaseClaims: JSONObject,
     audience: String? = null,
     nonce: String? = null,
-    holderKey: JWK? = null
+    holderSigner: SdJwtSigner? = null
 ): String {
     val credentialParts = credential.split(SEPARATOR)
     var presentation = credentialParts[0]
@@ -368,15 +368,17 @@ fun internalCreatePresentation(
 
     // Throw an exception if the holderKey is not null but there is no
     // key referenced in the credential.
-    if (sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
+    if (sdJwt.isNull(HOLDER_BINDING_KEY) && holderSigner != null) {
         throw Exception("SD-JWT has no holder binding and the holderKey is not null. Presentation would be signed with a key not referenced in the credential.")
     }
 
     // Check whether the bound key is the same as the key that
     // was passed to this method
-    if (!sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
+    if (!sdJwt.isNull(HOLDER_BINDING_KEY) && holderSigner != null) {
         val boundKey = JWK.parse(sdJwt.getJSONObject(HOLDER_BINDING_KEY).getJSONObject("jwk").toString())
-        if (jwkThumbprint(boundKey) != jwkThumbprint(holderKey)) {
+        val holderPubKey = holderSigner.getPublicJWK()
+
+        if (jwkThumbprint(boundKey) != jwkThumbprint(holderPubKey)) {
             throw Exception("Passed holder key is not the same as in the credential")
         }
     }
@@ -388,9 +390,7 @@ fun internalCreatePresentation(
             .claim("nonce", nonce)
             .build()
 
-        val keyBasedSdJwtSigner = holderKey?.let { KeyBasedSdJwtSigner(it) }
-
-        presentation += SEPARATOR + buildJWT(holderBindingJwtPayload, keyBasedSdJwtSigner)
+        presentation += SEPARATOR + buildJWT(holderBindingJwtPayload, holderSigner)
     } else {
         presentation += SEPARATOR
     }
@@ -406,7 +406,7 @@ fun internalCreatePresentation(
  * @param releaseClaims A JSONObject contains a non-null value for every claim that should be presented
  * @param audience      Optional: The value of the "aud" claim in the holder JWT
  * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
- * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
+ * @param holderSigner  Optional: A signer instance for the holder, only needed if holder binding is required
  * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
  */
 fun createPresentation(
@@ -414,14 +414,14 @@ fun createPresentation(
     releaseClaims: JSONObject,
     audience: String? = null,
     nonce: String? = null,
-    holderKey: JWK? = null
+    holderSigner: SdJwtSigner? = null
 ): String {
     return internalCreatePresentation(
         credential = credential,
         releaseClaims = releaseClaims,
         audience = audience,
         nonce = nonce,
-        holderKey = holderKey
+        holderSigner = holderSigner
     )
 }
 

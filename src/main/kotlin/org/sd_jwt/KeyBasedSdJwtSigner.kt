@@ -25,6 +25,7 @@ data class SdJwtHeader(val type: JOSEObjectType? = null, val cty: String? = null
  */
 class KeyBasedSdJwtSigner(key: JWK, sdJwtHeader: SdJwtHeader = SdJwtHeader()): SdJwtSigner {
     private val signer: JWSSigner
+    private val publicJWK: JWK
     private val header: JWSHeader.Builder
 
     init {
@@ -48,6 +49,7 @@ class KeyBasedSdJwtSigner(key: JWK, sdJwtHeader: SdJwtHeader = SdJwtHeader()): S
                 throw NotImplementedError("JWK signing algorithm not implemented")
             }
         }
+        publicJWK = key.toPublicJWK()
 
         if (sdJwtHeader.type != null) {
             header.type(sdJwtHeader.type)
@@ -62,5 +64,9 @@ class KeyBasedSdJwtSigner(key: JWK, sdJwtHeader: SdJwtHeader = SdJwtHeader()): S
 
     override fun jwsSigner(): JWSSigner {
         return signer
+    }
+
+    override fun getPublicJWK(): JWK {
+        return publicJWK
     }
 }

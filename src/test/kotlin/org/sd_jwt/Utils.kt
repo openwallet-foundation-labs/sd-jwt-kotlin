@@ -1,6 +1,5 @@
 package org.sd_jwt
 
-import com.nimbusds.jose.jwk.JWK
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.json.JSONArray
@@ -10,11 +9,11 @@ import kotlin.test.assertTrue
 
 data class TestConfig(
     val trustedIssuers: Map<String, String>,
-    val signer: SdJwtSigner,
+    val issuerSigner: SdJwtSigner,
     val issuer: String,
     val verifier: String?,
     val nonce: String?,
-    val holderKey: JWK?,
+    val holderSigner: SdJwtSigner?,
     val name: String
 )
 
@@ -56,11 +55,11 @@ fun testRoutine(
     println("====================================================\n")
 
     // Initialization
-    val holderPubKey = testConfig.holderKey?.toPublicJWK()
+    val holderPubKey = testConfig.holderSigner?.getPublicJWK()
 
     val credentialGen = createCredential(
         userClaims = claims,
-        signer = testConfig.signer,
+        signer = testConfig.issuerSigner,
         holderPubKey = holderPubKey,
         discloseStructure = discloseStructure
     )
@@ -69,7 +68,7 @@ fun testRoutine(
     println("Generated credential: $credentialGen")
 
     val presentationGen =
-        createPresentation(credentialGen, releaseClaims, testConfig.verifier, testConfig.nonce, testConfig.holderKey)
+        createPresentation(credentialGen, releaseClaims, testConfig.verifier, testConfig.nonce, testConfig.holderSigner)
 
     println("====================== Wallet ======================")
     println("Generated presentation: $presentationGen")

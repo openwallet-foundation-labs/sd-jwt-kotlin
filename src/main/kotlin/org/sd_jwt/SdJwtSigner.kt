@@ -2,6 +2,7 @@ package org.sd_jwt
 
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSSigner
+import com.nimbusds.jose.jwk.JWK
 
 /**
  * A generic interface for SD-JWT signers.
@@ -21,4 +22,12 @@ interface SdJwtSigner {
      * @return the JWS signer.
      */
     fun jwsSigner(): JWSSigner
+
+
+    /**
+     * Gets the public JWK of the key pair used to sign SD-JWTs.
+     *
+     * @return the public JWK.
+     */
+    fun getPublicJWK(): JWK
 }
