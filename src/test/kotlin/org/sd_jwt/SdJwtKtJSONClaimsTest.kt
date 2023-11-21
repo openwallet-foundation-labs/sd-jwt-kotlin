@@ -11,9 +11,11 @@ class SdJwtKtJSONClaimsTest {
     private val issuerKeyJson =
         """{"kty":"OKP","d":"Pp1foKt6rJAvx0igrBEfOgrT0dgMVQDHmgJZbm2h518","crv":"Ed25519","kid":"IssuerKey","x":"1NYF4EFS2Ov9hqt35fVt2J-dktLV29hs8UFjxbOXnho"}"""
     private val issuerKey = OctetKeyPair.parse(issuerKeyJson)
+    private val issuerSigner = KeyBasedSdJwtSigner(issuerKey)
     private val holderKeyJson =
         """{"kty":"OKP","d":"8G6whDz1owU1k7-TqtP3xEMasdI3t3j2AvpvXVwwrHQ","crv":"Ed25519","kid":"HolderKey","x":"s6gVLINLcCGhGEDTf_v1zMluLZcXj4GOXAfQlOWZM9Q"}"""
     private val holderKey = OctetKeyPair.parse(holderKeyJson)
+    private val holderSigner = KeyBasedSdJwtSigner(holderKey)
 
     private val trustedIssuers = mutableMapOf<String, String>(issuer to issuerKey.toPublicJWK().toJSONString())
 
@@ -22,11 +24,11 @@ class SdJwtKtJSONClaimsTest {
     private val testConfig =
         TestConfig(
             trustedIssuers = trustedIssuers,
-            issuerKey = issuerKey,
+            issuerSigner = issuerSigner,
             issuer = issuer,
             verifier = verifier,
             nonce = nonce,
-            holderKey = holderKey,
+            holderSigner = holderSigner,
             name = "JSONObject Credential"
         )
 

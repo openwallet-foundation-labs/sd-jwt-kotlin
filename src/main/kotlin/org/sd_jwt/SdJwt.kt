@@ -1,21 +1,11 @@
 package org.sd_jwt
 
-import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.PlainHeader
-import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.ECDSAVerifier
-import com.nimbusds.jose.crypto.Ed25519Signer
 import com.nimbusds.jose.crypto.Ed25519Verifier
-import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
-import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyType
-import com.nimbusds.jose.jwk.OctetKeyPair
-import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
 import com.nimbusds.jwt.SignedJWT
@@ -48,13 +38,6 @@ val DECOY_MAX = 5
 
 /** @suppress */
 const val HIDE_NAME = "59af18d6-03b8-4349-89a9-3710d51477e9:"
-
-/**
- * Data class for setting the SD-JWT header parameters typ and cty.
- * @param type: typ header parameter (example: JOSEObjectType("vc+sd-jwt"))
- * @param cty:  cty header parameter (example: "credential-claims-set+json")
- */
-data class SdJwtHeader(val type: JOSEObjectType? = null, val cty: String? = null)
 
 /**
  * @suppress
@@ -156,22 +139,20 @@ fun createSdClaims(
 
 /**
  * This method creates a SD-JWT credential that contains the claims
- * passed to the method and is signed with the issuer's key.
+ * passed to the method and is signed by the provided signer.
  *
  * @param userClaims        A kotlinx serializable data class that contains the user's claims (all types must be nullable and default value must be null)
- * @param issuerKey         The issuer's private key to sign the SD-JWT
+ * @param signer            A concrete signer instance for signing the SD-JWT as the issuer
  * @param holderPubKey      Optional: The holder's public key if holder binding is required
  * @param discloseStructure Optional: Class that has a non-null value for each object that should be disclosable separately
- * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
  * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
  * @return                  Serialized SD-JWT + disclosures to send to the holder
  */
 inline fun <reified T> createCredential(
     userClaims: T,
-    issuerKey: JWK,
+    signer: SdJwtSigner,
     holderPubKey: JWK? = null,
     discloseStructure: T? = null,
-    sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
     val jsonUserClaims = JSONObject(Json.encodeToString(userClaims))
@@ -183,32 +164,29 @@ inline fun <reified T> createCredential(
 
     return createCredential(
         userClaims = jsonUserClaims,
-        issuerKey = issuerKey,
+        signer = signer,
         holderPubKey = holderPubKey,
         discloseStructure = jsonDiscloseStructure,
-        sdJwtHeader = sdJwtHeader,
         decoy = decoy
     )
 }
 
 /**
  * This method creates a SD-JWT credential that contains the claims
- * passed to the method and is signed with the issuer's key.
+ * passed to the method and is signed by the provided signer.
  *
- * @param userClaims        A JSONObject that contains the user's claims
- * @param issuerKey         The issuer's private key to sign the SD-JWT
+ * @param userClaims        A JSONObject that contains the user's claims (all types must be nullable and default value must be null)
+ * @param signer            A concrete signer instance for signing the SD-JWT as the issuer
  * @param holderPubKey      Optional: The holder's public key if holder binding is required
- * @param discloseStructure Optional: Optional: JSONObject that has a non-null value for each element that should be disclosable separately
- * @param sdJwtHeader       Optional: Set a value for the header parameters 'typ' and 'cty' in the SD-JWT
+ * @param discloseStructure Optional: JSONObject that has a non-null value for each element that should be disclosable separately
  * @param decoy             Optional: If true, add decoy values to the SD digest arrays (default: true)
  * @return                  Serialized SD-JWT + disclosures to send to the holder
  */
-inline fun createCredential(
+fun createCredential(
     userClaims: JSONObject,
-    issuerKey: JWK,
+    signer: SdJwtSigner,
     holderPubKey: JWK? = null,
     discloseStructure: JSONObject = JSONObject(),
-    sdJwtHeader: SdJwtHeader = SdJwtHeader(),
     decoy: Boolean = true
 ): String {
     val disclosures = mutableListOf<String>()
@@ -235,7 +213,8 @@ inline fun createCredential(
         )
     }
 
-    val sdJwtEncoded = buildJWT(sdJwtPayload.build(), issuerKey, sdJwtHeader)
+
+    val sdJwtEncoded = buildJWT(sdJwtPayload.build(), signer)
 
     return sdJwtEncoded + SEPARATOR + disclosures.joinToString(SEPARATOR)
 }
@@ -340,15 +319,15 @@ fun checkDisclosuresMatchingDigest(sdJwt: JSONObject, disclosureMap: HashMap<Str
  * @param releaseClaims An object of the same class as the credential and every claim that should be disclosed contains a non-null value
  * @param audience      Optional: The value of the "aud" claim in the holder JWT
  * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
- * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
- * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
+ * @param holderSigner  Optional: A signer instance for the holder, only needed if holder binding is required
+ * @return              Serialized SD-JWT + disclosures [+ holder JWT] concatenated by a ~ character
  */
 inline fun <reified T> createPresentation(
     credential: String,
     releaseClaims: T,
     audience: String? = null,
     nonce: String? = null,
-    holderKey: JWK? = null,
+    holderSigner: SdJwtSigner? = null,
 ): String {
     val releaseClaimsJson = JSONObject(Json.encodeToString(releaseClaims))
 
@@ -357,7 +336,7 @@ inline fun <reified T> createPresentation(
         releaseClaims = releaseClaimsJson,
         audience = audience,
         nonce = nonce,
-        holderKey = holderKey
+        holderSigner = holderSigner
     )
 }
 
@@ -365,12 +344,12 @@ inline fun <reified T> createPresentation(
  * @suppress
  * This method is not for API users.
  */
-inline fun internalCreatePresentation(
+fun internalCreatePresentation(
     credential: String,
     releaseClaims: JSONObject,
     audience: String? = null,
     nonce: String? = null,
-    holderKey: JWK? = null
+    holderSigner: SdJwtSigner? = null
 ): String {
     val credentialParts = credential.split(SEPARATOR)
     var presentation = credentialParts[0]
@@ -389,15 +368,17 @@ inline fun internalCreatePresentation(
 
     // Throw an exception if the holderKey is not null but there is no
     // key referenced in the credential.
-    if (sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
+    if (sdJwt.isNull(HOLDER_BINDING_KEY) && holderSigner != null) {
         throw Exception("SD-JWT has no holder binding and the holderKey is not null. Presentation would be signed with a key not referenced in the credential.")
     }
 
     // Check whether the bound key is the same as the key that
     // was passed to this method
-    if (!sdJwt.isNull(HOLDER_BINDING_KEY) && holderKey != null) {
+    if (!sdJwt.isNull(HOLDER_BINDING_KEY) && holderSigner != null) {
         val boundKey = JWK.parse(sdJwt.getJSONObject(HOLDER_BINDING_KEY).getJSONObject("jwk").toString())
-        if (jwkThumbprint(boundKey) != jwkThumbprint(holderKey)) {
+        val holderPubKey = holderSigner.getPublicJWK()
+
+        if (jwkThumbprint(boundKey) != jwkThumbprint(holderPubKey)) {
             throw Exception("Passed holder key is not the same as in the credential")
         }
     }
@@ -408,7 +389,8 @@ inline fun internalCreatePresentation(
             .issueTime(Date.from(Instant.now()))
             .claim("nonce", nonce)
             .build()
-        presentation += SEPARATOR + buildJWT(holderBindingJwtPayload, holderKey)
+
+        presentation += SEPARATOR + buildJWT(holderBindingJwtPayload, holderSigner)
     } else {
         presentation += SEPARATOR
     }
@@ -424,22 +406,22 @@ inline fun internalCreatePresentation(
  * @param releaseClaims A JSONObject contains a non-null value for every claim that should be presented
  * @param audience      Optional: The value of the "aud" claim in the holder JWT
  * @param nonce         Optional: The value of the "nonce" claim in the holder JWT
- * @param holderKey     Optional: The holder's private key, only needed if holder binding is required
+ * @param holderSigner  Optional: A signer instance for the holder, only needed if holder binding is required
  * @return              Serialized SD-JWT + disclosures &lsqb;+ holder JWT&rsqb; concatenated by a ~ character
  */
-inline fun createPresentation(
+fun createPresentation(
     credential: String,
     releaseClaims: JSONObject,
     audience: String? = null,
     nonce: String? = null,
-    holderKey: JWK? = null
+    holderSigner: SdJwtSigner? = null
 ): String {
     return internalCreatePresentation(
         credential = credential,
         releaseClaims = releaseClaims,
         audience = audience,
         nonce = nonce,
-        holderKey = holderKey
+        holderSigner = holderSigner
     )
 }
 
@@ -447,51 +429,15 @@ inline fun createPresentation(
  * @suppress
  * This method is not for API users.
  */
-fun buildJWT(claims: JWTClaimsSet, key: JWK?, sdJwtHeader: SdJwtHeader = SdJwtHeader()): String {
-    if (key == null) {
+fun buildJWT(claims: JWTClaimsSet, signer: SdJwtSigner?): String {
+    if (signer == null) {
         val header = PlainHeader.Builder()
-        if (sdJwtHeader.type != null) {
-            header.type(sdJwtHeader.type)
-        }
-        if (sdJwtHeader.cty != null) {
-            header.contentType(sdJwtHeader.cty)
-        }
         return PlainJWT(header.build(), claims).serialize()
     }
 
-    val signer: JWSSigner
-    val header: JWSHeader.Builder
-    when (key.keyType) {
-        KeyType.OKP -> {
-            signer = Ed25519Signer(key as OctetKeyPair)
-            header = JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(key.keyID)
-        }
-
-        KeyType.RSA -> {
-            signer = RSASSASigner(key as RSAKey)
-            header = JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID)
-        }
-
-        KeyType.EC -> {
-            signer = ECDSASigner(key as ECKey)
-            header = JWSHeader.Builder(signer.supportedECDSAAlgorithm()).keyID(key.keyID)
-        }
-
-        else -> {
-            throw NotImplementedError("JWK signing algorithm not implemented")
-        }
-    }
-
-    if (sdJwtHeader.type != null) {
-        header.type(sdJwtHeader.type)
-    }
-    if (sdJwtHeader.cty != null) {
-        header.contentType(sdJwtHeader.cty)
-    }
-
-    val signedSdJwt = SignedJWT(header.build(), claims)
-    signedSdJwt.sign(signer)
-    return signedSdJwt.serialize()
+    val signedJwt = SignedJWT(signer.sdJwtHeader(), claims)
+    signedJwt.sign(signer.jwsSigner())
+    return signedJwt.serialize()
 }
 
 /**
@@ -575,7 +521,7 @@ inline fun <reified T> verifyPresentation(
  * @param verifyHolderBinding   Optional: Determine whether holder binding is required by the verifier's policy (default: true)
  * @return                      A JSONObject of the credential class filled with the disclosed claims
  */
-inline fun verifyPresentation(
+fun verifyPresentation(
     presentation: String,
     trustedIssuer: Map<String, String>,
     expectedNonce: String? = null,
