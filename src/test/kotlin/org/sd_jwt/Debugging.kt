@@ -184,8 +184,9 @@ internal class Debugging {
         println()
 
         val releaseClaims = EmailCredential(type = "", iat = 0, exp = 0, iss = "", credentialSubject = CredentialSubject(email = "", givenName = "", familyName = ""))
+        val holderSignerNextcloud = KeyBasedSdJwtSigner(holderKey)
         val presentation =
-            createPresentation(credential, releaseClaims, "https://nextcloud.example.com", "1234", holderSigner)
+            createPresentation(credential, releaseClaims, "https://nextcloud.example.com", "1234", holderSignerNextcloud)
         println("Presentation: $presentation")
         println()
 
@@ -198,22 +199,4 @@ internal class Debugging {
         )
         println(verifiedEmailCredential)
     }
-
-    @Test
-    fun interopTest() {
-        val trustedIssuers = mapOf("did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9" to "{\"kty\":\"EC\",\"crv\":\"P-256\",\"x\":\"b28d4MwZMjw8-00CG4xfnn9SLMVMM19SlqZpVb_uNtQ\",\"y\":\"Xv5zWwuoaTgdS6hV43yI6gBwTnjukmFQQnJ_kCxzqk8\"}")
-        val presentation = "eyJhbGciOiAiRVMyNTYifQ.eyJpc3MiOiAiZGlkOmp3azpleUpqY25ZaU9pSlFMVEkxTmlJc0ltdDBlU0k2SWtWRElpd2llQ0k2SW1GallrbFJhWFZOY3pOcE9GOTFjM3BGYWtveWRIQlVkRkpOTkVWVk0zbDZPVEZRU0RaRFpFZ3lWakFpTENKNUlqb2lYMHRqZVV4cU9YWlhUWEIwYm0xTGRHMDBOa2R4UkhvNGQyWTNORWsxVEV0bmNtd3lSM3BJTTI1VFJTSjkiLCAiaWF0IjogMTY3NzU2ODIwNywgImV4cCI6IDE2ODUyNTQyMDcsICJ0eXBlIjogIlZlcmlmaWVkRU1haWwiLCAiY3JlZGVudGlhbFN1YmplY3QiOiB7Il9zZCI6IFsiUGt6a09NbkwxY2dhaW5Dd3hWbEFNZlJweTZVNEJhMUQ3VjM1M0dYUHR1VSIsICJxNExmanEzRWwtcUt6YlZoMnAxUmtuRWNwOE4teEI5azE4cEJJTGFPX2Y4IiwgInpnSmpUZEtOYVpOc2xlYnJmOGJYQ01xQXlpT2FnQnlYeFdsZGpaaDhFZVkiXX0sICJfc2RfYWxnIjogInNoYS0yNTYiLCAiY25mIjogeyJqd2siOiB7Imt0eSI6ICJFQyIsICJjcnYiOiAiUC0yNTYiLCAieCI6ICJUQ0FFUjE5WnZ1M09IRjRqNFc0dmZTVm9ISVAxSUxpbERsczd2Q2VHZW1jIiwgInkiOiAiWnhqaVdXYlpNUUdIVldLVlE0aGJTSWlyc1ZmdWVjQ0U2dDRqVDlGMkhaUSJ9fX0.ed89Fk-G96XDrAhyZuvOxLUoH3EtpLW7WdSQQqyQKpxTWA7-MRElQCkSiUE8hyOV9T7jL-ojnoPJZzFMT4w3ng~WyI4SVRmdUtzT052eVpGV09iTllSbXhBIiwgImVtYWlsIiwgInRlc3RAZXhhbXBsZS5jb20iXQ~eyJhbGciOiAiRVMyNTYifQ.eyJub25jZSI6ICJYWk9VY28xdV9nRVBrbnhTNzhzV1dnIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE2Nzc1OTc3NTd9.gCfFBHRTJ9OIfTPlxghWr0wCyMaCMdKP65zcDnVUGzskyXTNcwYiEO116Qyp1J2shyYYstd9jM8V-k1xcIoVZA"
-        val nonce = "XZOUco1u_gEPknxS78sWWg"
-        val aud = "https://example.com/verifier"
-
-        val verifiedEmailCredential = verifyPresentation<EmailCredential>(
-            presentation,
-            trustedIssuers,
-            nonce,
-            aud,
-            true
-        )
-        println(verifiedEmailCredential)
-    }
-
 }
