@@ -90,7 +90,7 @@ internal class Debugging {
         println("Generated presentation: $presentationGen")
 
         val verifiedCredentialGen =
-            verifyPresentation<IdCredential>(presentationGen, trustedIssuers, nonce, verifier, true)
+            verifyPresentation<IdCredential>(presentationGen, TrustedIssuersSdJwtVerifier(trustedIssuers), nonce, verifier, true)
 
         println("===================== Verifier =====================")
         println("Verified credential: $verifiedCredentialGen\n")
@@ -124,7 +124,7 @@ internal class Debugging {
         println("Presentation: $presentation")
 
         val verifiedSimpleTestCredential =
-            verifyPresentation<SimpleTestCredential>(presentation, trustedIssuers, verifyHolderBinding = false)
+            verifyPresentation<SimpleTestCredential>(presentation, TrustedIssuersSdJwtVerifier(trustedIssuers), verifyHolderBinding = false)
 
         println("===================== Verifier =====================")
         println("Verified credential: $verifiedSimpleTestCredential\n")
@@ -192,7 +192,7 @@ internal class Debugging {
 
         val verifiedEmailCredential = verifyPresentation<EmailCredential>(
             presentation,
-            trustedIssuers,
+            TrustedIssuersSdJwtVerifier(trustedIssuers),
             "1234",
             "https://nextcloud.example.com",
             true

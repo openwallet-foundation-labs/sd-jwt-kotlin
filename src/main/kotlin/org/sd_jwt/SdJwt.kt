@@ -1,5 +1,6 @@
 package org.sd_jwt
 
+import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.PlainHeader
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.crypto.Ed25519Verifier
@@ -487,7 +488,7 @@ fun verifyAndBuildCredential(credentialClaims: Any, disclosures: HashMap<String,
  * of the credential class.
  *
  * @param presentation          Serialized presentation containing the SD-JWT and the disclosures
- * @param trustedIssuer         A map that contains issuer urls and the corresponding JWKs in JSON format serialized as strings
+ * @param sdJwtVerifier         The verifier used to verify the SD-JWT
  * @param expectedNonce         Optional: The value that is expected in the nonce claim of the holder JWT
  * @param expectedAud           Optional: The value that is expected in the aud claim of the holder JWT
  * @param verifyHolderBinding   Optional: Determine whether holder binding is required by the verifier's policy (default: true)
@@ -495,14 +496,14 @@ fun verifyAndBuildCredential(credentialClaims: Any, disclosures: HashMap<String,
  */
 inline fun <reified T> verifyPresentation(
     presentation: String,
-    trustedIssuer: Map<String, String>,
+    sdJwtVerifier: SdJwtVerifier,
     expectedNonce: String? = null,
     expectedAud: String? = null,
     verifyHolderBinding: Boolean = true,
 ): T {
 
     val sdClaimsParsedJson = verifyPresentation(
-        presentation, trustedIssuer, expectedNonce, expectedAud, verifyHolderBinding
+        presentation, sdJwtVerifier, expectedNonce, expectedAud, verifyHolderBinding
     )
 
     val format = Json { ignoreUnknownKeys = true }
@@ -515,7 +516,7 @@ inline fun <reified T> verifyPresentation(
  * of the credential class.
  *
  * @param presentation          Serialized presentation containing the SD-JWT and the disclosures
- * @param trustedIssuer         A map that contains issuer urls and the corresponding JWKs in JSON format serialized as strings
+ * @param sdJwtVerifier         The verifier used to verify the SD-JWT
  * @param expectedNonce         Optional: The value that is expected in the nonce claim of the holder JWT
  * @param expectedAud           Optional: The value that is expected in the aud claim of the holder JWT
  * @param verifyHolderBinding   Optional: Determine whether holder binding is required by the verifier's policy (default: true)
@@ -523,7 +524,7 @@ inline fun <reified T> verifyPresentation(
  */
 fun verifyPresentation(
     presentation: String,
-    trustedIssuer: Map<String, String>,
+    sdJwtVerifier: SdJwtVerifier,
     expectedNonce: String? = null,
     expectedAud: String? = null,
     verifyHolderBinding: Boolean = true,
@@ -532,7 +533,7 @@ fun verifyPresentation(
     val (disclosureMap, holderJwt) = parseDisclosures(presentationSplit, 1)
 
     // Verify SD-JWT
-    val sdJwtParsed = verifySDJWT(presentationSplit[0], trustedIssuer)
+    val sdJwtParsed = verifySDJWT(presentationSplit[0], sdJwtVerifier)
     verifyJwtClaims(sdJwtParsed)
 
     // Verify holder binding if required by the verifier's policy.
@@ -571,20 +572,12 @@ fun verifyPresentation(
  * @suppress
  * This method is not for API users. Use 'verifyPresentation' method.
  */
-fun verifySDJWT(jwt: String, trustedIssuer: Map<String, String>): JSONObject {
-    val jwtPayload = parseJWT(jwt)
+fun verifySDJWT(jwt: String, sdJwtVerifier: SdJwtVerifier): JSONObject {
+    val signedJwt = SignedJWT.parse(jwt)
+    val jwtVerifier = sdJwtVerifier.jwsVerifier(signedJwt)
 
-    val issuer = if (!jwtPayload.isNull("iss")) {
-        jwtPayload.getString("iss")
-    } else {
-        throw Exception("Could not find issuer in JWT")
-    }
-    if (!trustedIssuer.containsKey(issuer)) {
-        throw Exception("Could not find signing key to verify JWT")
-    }
-
-    if (verifyJWTSignature(jwt, trustedIssuer[issuer]!!)) {
-        return jwtPayload
+    if (signedJwt.verify(jwtVerifier)) {
+        return JSONObject(signedJwt.payload.toJSONObject())
     } else {
         throw Exception("Could not verify SD-JWT")
     }
@@ -613,28 +606,7 @@ fun verifyHolderBindingJwt(jwt: String, sdJwtParsed: JSONObject): JSONObject {
  * This method is not for API users. Use 'verifyPresentation' method.
  */
 private fun verifyJWTSignature(jwt: String, jwkStr: String): Boolean {
-    // Create verifier object
-    val jwk = JWK.parse(jwkStr)
-    val verifier = when (jwk.keyType) {
-        KeyType.OKP -> {
-            Ed25519Verifier(jwk.toOctetKeyPair())
-        }
-
-        KeyType.RSA -> {
-            RSASSAVerifier(jwk.toRSAKey())
-        }
-
-        KeyType.EC -> {
-            ECDSAVerifier(jwk.toECKey())
-        }
-
-        else -> {
-            throw NotImplementedError("JWK signing algorithm not implemented")
-        }
-    }
-
-    // Verify JWT
-    return SignedJWT.parse(jwt).verify(verifier)
+    return SignedJWT.parse(jwt).verify(JWK.parse(jwkStr).jwsVerifier())
 }
 
 /**
@@ -706,4 +678,19 @@ fun b64Decode(str: String?): String {
  */
 fun jwkThumbprint(jwk: JWK): String {
     return b64Encoder(jwk.computeThumbprint().decode())
+}
+
+internal fun JWK.jwsVerifier(): JWSVerifier = when (keyType) {
+    KeyType.OKP -> {
+        Ed25519Verifier(toOctetKeyPair())
+    }
+    KeyType.RSA -> {
+        RSASSAVerifier(toRSAKey())
+    }
+    KeyType.EC -> {
+        ECDSAVerifier(toECKey())
+    }
+    else -> {
+        throw NotImplementedError("JWK signing algorithm not implemented")
+    }
 }
