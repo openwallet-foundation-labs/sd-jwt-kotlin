@@ -82,7 +82,7 @@ fun testRoutine(
     }
 
     val verifiedCredentialGen = verifyPresentation(
-        presentationGen, testConfig.trustedIssuers, testConfig.nonce, testConfig.verifier,
+        presentationGen, TrustedIssuersSdJwtVerifier(testConfig.trustedIssuers), testConfig.nonce, testConfig.verifier,
         holderPubKey != null
     )
 
