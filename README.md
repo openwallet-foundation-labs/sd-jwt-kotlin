@@ -1,5 +1,14 @@
 # SD-JWT Implementation in Kotlin
 
+---
+
+**Important note:** This project is no longer maintained.
+We recommend using the [eudi-lib-jvm-sdjwt-kt](https://github.com/eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt)
+library instead. If you are interested in maintaining this project,
+please contact [Fabian Hauck](mailto:contact@fabianhauck.de).
+
+---
+
 This is a Kotlin implementation of the [Selective Disclosure for JWTs](https://github.com/oauthstuff/draft-selective-disclosure-jwt)
 spec using the [Nimbus JOSE + JWT](https://connect2id.com/products/nimbus-jose-jwt) 
 library.
